@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Cluster Desk: a Kubernetes-style hexagon holding a resource list. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3540"/>
+      <stop offset="1" stop-color="#161c22"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34dccd"/>
+      <stop offset="1" stop-color="#00a39a"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="100" fill="url(#bg)"/>
+  <rect x="33.5" y="33.5" width="445" height="445" rx="98.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <polygon points="382.4,339.0 256.0,412.0 129.6,339.0 129.6,193.0 256.0,120.0 382.4,193.0" fill="#000000" opacity="0.35" stroke="#000000" stroke-width="28" stroke-linejoin="round"/>
+  <polygon points="382.4,329.0 256.0,402.0 129.6,329.0 129.6,183.0 256.0,110.0 382.4,183.0" fill="url(#teal)" stroke="url(#teal)" stroke-width="28" stroke-linejoin="round"/>
+  <g fill="#10171c">
+    <rect x="166" y="190" width="180" height="30" rx="15"/>
+    <rect x="166" y="241" width="180" height="30" rx="15" opacity="0.8"/>
+    <rect x="166" y="292" width="120" height="30" rx="15" opacity="0.6"/>
+  </g>
+  <circle cx="188" cy="205" r="7" fill="#34dccd"/>
+  <circle cx="188" cy="256" r="7" fill="#34dccd"/>
+  <circle cx="188" cy="307" r="7" fill="#f5a623"/>
+</svg>

@@ -3,6 +3,8 @@
 A fast desktop Kubernetes UI written in Rust ([egui](https://github.com/emilk/egui)), modelled on the
 look and behaviour of the Lens family of IDEs (FreeLens).
 
+Documentation: https://diverofdark.github.io/cluster-desk/ (source in `book/`, an [mdBook](https://rust-lang.github.io/mdBook/)).
+
 ![Cluster Desk](docs/screenshot.png)
 
 ## Features

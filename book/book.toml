@@ -1,0 +1,18 @@
+[book]
+title = "Cluster Desk"
+description = "A fast desktop Kubernetes UI written in Rust, for Linux, Windows and macOS."
+authors = ["Kirill Orlov"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "coal"
+preferred-dark-theme = "coal"
+additional-css = ["theme/cluster-desk.css"]
+git-repository-url = "https://github.com/DiverOfDark/cluster-desk"
+edit-url-template = "https://github.com/DiverOfDark/cluster-desk/edit/main/book/{path}"
+site-url = "/cluster-desk/"
+no-section-label = true
+
+[output.html.search]
+enable = true

@@ -1,0 +1,51 @@
+# Build the documentation (book/, an mdBook) and publish it to GitHub Pages.
+# Repository settings → Pages → Source must be "GitHub Actions".
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['book/**', '.github/workflows/pages.yml']
+  pull_request:
+    paths: ['book/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  MDBOOK_VERSION: 0.5.4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mdBook
+        run: |
+          curl -fsSL "https://github.com/rust-lang/mdBook/releases/download/v$MDBOOK_VERSION/mdbook-v$MDBOOK_VERSION-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - run: mdbook build book
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: book/book
+
+  # Pull requests only check that the book builds.
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
+        uses: actions/deploy-pages@v4
