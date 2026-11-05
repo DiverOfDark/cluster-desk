@@ -7,6 +7,7 @@ mod app;
 mod backend;
 mod crd;
 mod demo;
+mod desktop;
 mod details;
 mod kubectl_checksums;
 mod dock;
@@ -41,6 +42,7 @@ fn main() -> eframe::Result<()> {
         // so it also works on a locked or headless desktop.
         return headless_screenshot(path, size);
     }
+    desktop::integrate();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Cluster Desk")

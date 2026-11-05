@@ -54,16 +54,23 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
+          sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev librsvg2-bin
           cargo build --release --locked
 
           APPDIR=dist/AppDir
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
+          ICONS="$APPDIR/usr/share/icons/hicolor"
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$ICONS/scalable/apps"
           cp target/release/kubelens "$APPDIR/usr/bin/cluster-desk"
           cp assets/cluster-desk.desktop "$APPDIR/usr/share/applications/"
-          cp assets/icon.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/cluster-desk.png"
+          cp assets/icon.svg "$ICONS/scalable/apps/cluster-desk.svg"
+          for s in 16 24 32 48 64 128 256 512; do
+            mkdir -p "$ICONS/${s}x${s}/apps"
+            rsvg-convert -w $s -h $s assets/icon.svg -o "$ICONS/${s}x${s}/apps/cluster-desk.png"
+          done
           cp assets/cluster-desk.desktop "$APPDIR/"
-          cp assets/icon.png "$APPDIR/cluster-desk.png"
+          cp "$ICONS/256x256/apps/cluster-desk.png" "$APPDIR/cluster-desk.png"
+          # File managers show this as the AppImage's own icon.
+          cp "$ICONS/256x256/apps/cluster-desk.png" "$APPDIR/.DirIcon"
           ln -s usr/bin/cluster-desk "$APPDIR/AppRun"
 
           curl -fsSL -o appimagetool \
