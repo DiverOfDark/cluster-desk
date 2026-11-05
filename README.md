@@ -48,6 +48,19 @@ certificate, so macOS blocks the first launch. Allow it once with
 `xattr -dr com.apple.quarantine "/Applications/Cluster Desk.app"`, or open it and then choose
 System Settings → Privacy & Security → Open Anyway.
 
+### Updates
+
+Release builds update themselves (Preferences → Updates, on by default). Every 6 hours the app
+reads `latest.json` from the newest GitHub release, downloads a newer package in the background,
+checks its [minisign](https://jedisct1.github.io/minisign/) signature against the public key in
+`src/update.rs`, and installs it when the app quits (or right away with Restart to update). It
+replaces the AppImage file on Linux, `cluster-desk.exe` on Windows and `Cluster Desk.app` on
+macOS. Builds made with plain `cargo build` don't update.
+
+CI signs the packages with the `MINISIGN_SECRET_KEY` repository secret (a password-less minisign
+secret key). Keep a copy of that key: a release signed with any other key is refused by every
+installed copy. `CLUSTER_DESK_UPDATE_URL` points the app at another `latest.json` for testing.
+
 ## Notes
 
 `MECHANICS.md` documents which behaviours, colours and values follow FreeLens and where they come

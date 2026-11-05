@@ -17,6 +17,7 @@ pub enum Section {
     Authentication,
     Proxy,
     Terminal,
+    Updates,
 }
 
 #[derive(Clone, Default)]
@@ -204,6 +205,7 @@ impl App {
                     (Section::Kubernetes, "Kubernetes"),
                     (Section::Authentication, "Authentication"),
                     (Section::Terminal, "Terminal"),
+                    (Section::Updates, "Updates"),
                 ] {
                     let active = self.prefs.section == s;
                     let (rect, resp) = ui.allocate_exact_size(egui::vec2(170.0, 32.0), egui::Sense::click());
@@ -242,6 +244,7 @@ impl App {
                             hint(ui, "This will make the app trust ANY certificate authority without any validations. Needed with some corporate proxies that do certificate re-writing. Does not affect cluster communications!");
                         });
                     }
+                    Section::Updates => self.prefs_updates(ui, &mut draft),
                     Section::Terminal => {
                         group(ui, "Terminal copy & paste", |ui| {
                             ui.checkbox(&mut draft.terminal_copy_on_select, "Copy on select and paste on right-click");
@@ -263,6 +266,46 @@ impl App {
         if self.prefs.busy.lock().unwrap().as_deref().map(|b| b.ends_with('…')).unwrap_or(false) {
             ui.ctx().request_repaint_after(std::time::Duration::from_millis(300));
         }
+    }
+
+    fn prefs_updates(&mut self, ui: &mut egui::Ui, d: &mut Settings) {
+        use crate::update::State;
+        let state = self.updater.state();
+        group(ui, "Version", |ui| {
+            ui.label(RichText::new(format!("Cluster Desk {}", crate::update::VERSION)).color(theme::TEXT_HI));
+            let text = match &state {
+                State::Off(why) => why.clone(),
+                State::Idle => "Not checked yet.".into(),
+                State::Checking => "Checking for updates…".into(),
+                State::UpToDate => "Up to date.".into(),
+                State::Downloading(v) => format!("Downloading {v}…"),
+                State::Ready(v) => format!("{v} is downloaded and installs when you quit."),
+                State::Installed(v) => format!("{v} is installed and runs the next time you start Cluster Desk."),
+                State::Failed(e) => format!("Could not update: {e}"),
+            };
+            hint(ui, &text);
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                let busy = matches!(state, State::Checking | State::Downloading(_));
+                let can_check = !matches!(state, State::Off(_) | State::Ready(_) | State::Installed(_)) && !busy;
+                if ui.add_enabled(can_check, egui::Button::new("Check now")).clicked() {
+                    self.updater.check_now(&self.egui_ctx);
+                }
+                if matches!(state, State::Ready(_) | State::Installed(_)) && ui.button("Restart to update").clicked() {
+                    if let Err(e) = self.updater.restart(&self.egui_ctx) {
+                        self.toast(e, true);
+                    }
+                }
+                if busy {
+                    ui.spinner();
+                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(300));
+                }
+            });
+        });
+        group(ui, "Automatic updates", |ui| {
+            ui.checkbox(&mut d.auto_update, "Check for updates automatically");
+            hint(ui, "Every 6 hours the app looks for a newer release on GitHub (github.com/DiverOfDark/cluster-desk), downloads it in the background and checks its signature. The update installs when you quit, or right away with Restart to update.");
+        });
     }
 
     fn prefs_kubernetes(&mut self, ui: &mut egui::Ui, d: &mut Settings) {

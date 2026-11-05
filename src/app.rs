@@ -90,6 +90,9 @@ pub struct App {
     pub headless: bool,
     pub shot_ready: bool,
     pub prefs: crate::prefs::PrefsState,
+    pub updater: crate::update::Updater,
+    /// A toast went out for this downloaded update.
+    update_announced: Option<String>,
     pub backend: Backend,
     pub egui_ctx: egui::Context,
     pub clusters: Vec<ClusterEntry>,
@@ -156,6 +159,8 @@ impl App {
             headless: false,
             shot_ready: false,
             prefs: Default::default(),
+            updater: Default::default(),
+            update_announced: None,
             backend,
             egui_ctx: cc.egui_ctx.clone(),
             clusters: vec![ClusterEntry { name: "sample-cluster".into(), source: Source::Sample }],
@@ -248,6 +253,10 @@ impl App {
                 "workloads" => app.view = View::Workloads,
                 "catalog" => app.view = View::Catalog,
                 "prefs" => app.view = View::Preferences,
+                "prefs-updates" => {
+                    app.view = View::Preferences;
+                    app.prefs.section = crate::prefs::Section::Updates;
+                }
                 "prefs-auth" => {
                     app.view = View::Preferences;
                     app.prefs.section = crate::prefs::Section::Authentication;
@@ -977,6 +986,20 @@ impl App {
             "⎈  No cluster selected".to_string()
         };
         p.text(pos2(rect.left() + 10.0, rect.center().y), Align2::LEFT_CENTER, left, font.clone(), theme::TEXT_HI);
+        if let crate::update::State::Ready(v) | crate::update::State::Installed(v) = self.updater.state() {
+            let g = p.layout_no_wrap(format!("⬆  Update {v} ready · restart"), font.clone(), theme::TEXT_HI);
+            let r = Rect::from_min_size(pos2(rect.right() - 10.0 - g.size().x, rect.center().y - g.size().y / 2.0), g.size());
+            p.galley(r.min, g, theme::TEXT_HI);
+            let resp = ui.interact(r.expand(4.0), egui::Id::unique("statusbar_update"), Sense::click()).on_hover_text("Open Preferences → Updates");
+            if resp.hovered() {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+            }
+            if resp.clicked() {
+                self.prefs.section = crate::prefs::Section::Updates;
+                self.navigate(View::Preferences);
+            }
+            return;
+        }
         let loading = self.store.values().any(|d| d.loading);
         let right = if loading {
             "Refreshing…".to_string()
@@ -1056,8 +1079,22 @@ fn draw_grid_icon(p: &egui::Painter, c: Pos2, col: Color32) {
 }
 
 impl eframe::App for App {
+    fn on_exit(&mut self) {
+        // A downloaded update replaces this copy on the way out.
+        let _ = self.updater.install();
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if !self.headless && self.screenshot.is_none() {
+            self.updater.start(&ctx);
+            if let crate::update::State::Ready(v) = self.updater.state() {
+                if self.update_announced.as_ref() != Some(&v) {
+                    self.update_announced = Some(v.clone());
+                    self.toast(format!("Cluster Desk {v} is downloaded and installs when you quit."), false);
+                }
+            }
+        }
         while let Ok(r) = self.backend.rx.try_recv() {
             self.handle(r);
         }

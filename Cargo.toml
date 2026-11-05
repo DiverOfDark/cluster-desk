@@ -20,6 +20,8 @@ serde = { version = "1.0.229", features = ["derive"] }
 egui_kittest = { version = "0.37", features = ["wgpu", "eframe"] }
 egui_system_font_provider = "0.37.0"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+minisign-verify = { version = "0.3.0", default-features = false }
+zip = { version = "9.4.0", default-features = false, features = ["deflate-flate2"] }
 
 [profile.release]
 opt-level = 3
