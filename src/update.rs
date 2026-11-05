@@ -24,9 +24,12 @@ const MANIFEST_URL: &str = "https://github.com/DiverOfDark/cluster-desk/releases
 /// minisign public key; the secret key signs the packages in CI (MINISIGN_SECRET_KEY).
 const PUBLIC_KEY: &str = "RWRQj//TJJ/8pyT8uYhbZ1KyBRZ6dnaTuau1bhik9nts2x7z+bzF4Ta5";
 const CHECK_EVERY: Duration = Duration::from_secs(6 * 3600);
-/// Names next to the installed app: the downloaded update and the replaced copy.
+/// Names next to the installed app: the downloaded update and the replaced copy. Each running
+/// copy of the app uses its own (the process id is added), so one copy never deletes another's.
 const STAGED: &str = ".cluster-desk-update";
 const OLD: &str = ".cluster-desk-old";
+/// An update another copy downloaded but never installed is deleted after this long.
+const STALE: Duration = Duration::from_secs(2 * 24 * 3600);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum State {
@@ -183,6 +186,13 @@ impl Updater {
     pub fn install(&self) -> Result<Option<String>, String> {
         let State::Ready(v) = self.state() else { return Ok(None) };
         let Some(t) = &self.target else { return Ok(None) };
+        if !staged_path(t).exists() {
+            // Removed behind our back: download it again on the next check.
+            let mut s = self.shared.lock().unwrap();
+            s.state = State::Idle;
+            s.checked_at = None;
+            return Err("The downloaded update is gone; it will be downloaded again.".into());
+        }
         install(t)?;
         self.set(State::Installed(v.clone()));
         Ok(Some(v))
@@ -267,18 +277,20 @@ fn dir_of(p: &Path) -> PathBuf {
 
 /// Where the downloaded update waits, next to the installed copy so the final move is a rename.
 fn staged_path(t: &Target) -> PathBuf {
+    let id = std::process::id();
     match t {
-        Target::AppImage(p) => dir_of(p).join(format!("{STAGED}.AppImage")),
-        Target::Exe(p) => dir_of(p).join(format!("{STAGED}.exe")),
-        Target::Bundle(p) => dir_of(p).join(STAGED),
+        Target::AppImage(p) => dir_of(p).join(format!("{STAGED}-{id}.AppImage")),
+        Target::Exe(p) => dir_of(p).join(format!("{STAGED}-{id}.exe")),
+        Target::Bundle(p) => dir_of(p).join(format!("{STAGED}-{id}")),
     }
 }
 
 fn old_path(t: &Target) -> PathBuf {
+    let id = std::process::id();
     match t {
-        Target::AppImage(p) => dir_of(p).join(format!("{OLD}.AppImage")),
-        Target::Exe(p) => dir_of(p).join(format!("{OLD}.exe")),
-        Target::Bundle(p) => dir_of(p).join(format!("{OLD}.app")),
+        Target::AppImage(p) => dir_of(p).join(format!("{OLD}-{id}.AppImage")),
+        Target::Exe(p) => dir_of(p).join(format!("{OLD}-{id}.exe")),
+        Target::Bundle(p) => dir_of(p).join(format!("{OLD}-{id}.app")),
     }
 }
 
@@ -290,11 +302,25 @@ fn remove(p: &Path) {
     }
 }
 
-/// Leftovers of an earlier update: the replaced copy (Windows can't delete a running exe, so it
-/// goes now) and a download that was never installed.
+/// Leftovers of earlier updates next to the installed copy. Replaced copies go now (Windows
+/// can't delete an exe that is still running, so one in use by another copy of the app stays
+/// and is tried again next time). Downloads go only once stale, since another running copy may
+/// be waiting to install its own.
 fn cleanup(t: &Target) {
-    remove(&old_path(t));
-    remove(&staged_path(t));
+    let Ok(entries) = std::fs::read_dir(dir_of(match t {
+        Target::AppImage(p) | Target::Exe(p) | Target::Bundle(p) => p,
+    })) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let stale = || {
+            e.metadata().and_then(|m| m.modified()).ok().and_then(|m| m.elapsed().ok()).map(|age| age >= STALE).unwrap_or(false)
+        };
+        if name.starts_with(OLD) || (name.starts_with(STAGED) && stale()) {
+            remove(&e.path());
+        }
+    }
 }
 
 fn stage(t: &Target, data: &[u8]) -> Result<(), String> {
@@ -438,6 +464,19 @@ mod tests {
         install(&t).unwrap();
         assert_eq!(std::fs::read(app.join("Contents/MacOS/cluster-desk")).unwrap(), b"new");
         assert!(!old_path(&t).exists() && !staged_path(&t).exists());
+    }
+
+    #[test]
+    fn cleanup_keeps_another_copys_download() {
+        let d = tmp("cleanup");
+        let t = Target::AppImage(d.join("Cluster.AppImage"));
+        let theirs = d.join(format!("{STAGED}-1.AppImage"));
+        let replaced = d.join(format!("{OLD}-1.AppImage"));
+        std::fs::write(&theirs, b"pending").unwrap();
+        std::fs::write(&replaced, b"old").unwrap();
+        cleanup(&t);
+        assert!(theirs.exists());
+        assert!(!replaced.exists());
     }
 
     // Made with: echo -n "cluster desk" | minisign -S -s minisign.key -m - -t "cluster-desk 0.1.7 linux-x86_64"
