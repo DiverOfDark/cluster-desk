@@ -122,6 +122,10 @@ pub struct Backend {
 }
 
 fn kubectl(args: &[String], stdin: Option<&str>) -> Result<String, String> {
+    // Without an installed kubectl, the first call downloads one (the original bundles it).
+    if let Err(why) = crate::settings::ensure_fallback_kubectl() {
+        return Err(why);
+    }
     // The kubectl prepared for this context (Preferences), with PATH/KUBECONFIG/proxy applied.
     let context = args.iter().position(|a| a == "--context").and_then(|i| args.get(i + 1)).map(|s| s.as_str());
     let mut cmd: Command = crate::settings::command(&crate::settings::kubectl_for(context));
