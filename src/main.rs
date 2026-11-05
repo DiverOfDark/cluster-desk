@@ -15,6 +15,7 @@ mod prefs;
 mod settings;
 mod terminal;
 mod theme;
+mod update;
 mod util;
 mod views;
 

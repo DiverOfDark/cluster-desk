@@ -34,6 +34,8 @@ pub struct Settings {
     /// terminalConfig.fontSize (default 12) and terminalCopyOnSelect (default false).
     pub terminal_font_size: f32,
     pub terminal_copy_on_select: bool,
+    /// Check GitHub releases for a newer Cluster Desk and download it (default true).
+    pub auto_update: bool,
 }
 
 impl Default for Settings {
@@ -51,6 +53,7 @@ impl Default for Settings {
             allow_untrusted_cas: false,
             terminal_font_size: 12.0,
             terminal_copy_on_select: false,
+            auto_update: true,
         }
     }
 }
@@ -356,7 +359,7 @@ fn agent() -> ureq::Agent {
     b.build()
 }
 
-fn fetch(url: &str) -> Result<Vec<u8>, String> {
+pub fn fetch(url: &str) -> Result<Vec<u8>, String> {
     let resp = agent().get(url).call().map_err(|e| format!("{url}: {e}"))?;
     let mut buf = Vec::new();
     resp.into_reader().take(512 * 1024 * 1024).read_to_end(&mut buf).map_err(|e| e.to_string())?;

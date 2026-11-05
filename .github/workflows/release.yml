@@ -2,7 +2,8 @@
 #   Linux: AppImage (x86_64)
 #   Windows: zip (x86_64)
 #   macOS: dmg with a universal (Apple Silicon + Intel) app bundle
-# Pushes to main also publish them as a GitHub release.
+# Pushes to main also publish them as a GitHub release, with latest.json and minisign
+# signatures for the app's updater (src/update.rs).
 name: release
 
 on:
@@ -20,6 +21,8 @@ concurrency:
 
 env:
   VERSION: 0.1.${{ github.run_number }}
+  # Built into the binary: the updater compares it with latest.json.
+  CLUSTER_DESK_VERSION: 0.1.${{ github.run_number }}
 
 jobs:
   build:
@@ -34,6 +37,8 @@ jobs:
             package: cluster-desk-windows-x86_64.zip
           - os: macos-latest
             package: cluster-desk-macos-universal.dmg
+            # What the updater downloads: the .app bundle on its own.
+            update: cluster-desk-macos-universal.app.tar.gz
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -120,13 +125,16 @@ jobs:
           # Not signed with a developer certificate; an ad-hoc signature keeps Apple Silicon happy.
           codesign --force --deep --sign - "$APP"
 
+          tar -czf "dist/${{ matrix.update }}" -C dist/dmg "Cluster Desk.app"
           ln -s /Applications dist/dmg/Applications
           hdiutil create -volname "Cluster Desk" -srcfolder dist/dmg -ov -format UDZO "dist/${{ matrix.package }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
-          path: dist/${{ matrix.package }}
+          path: |
+            dist/${{ matrix.package }}
+            ${{ matrix.update && format('dist/{0}', matrix.update) || '' }}
           if-no-files-found: error
 
   release:
@@ -138,6 +146,29 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      # Each package the updater installs is signed with a trusted comment naming its version
+      # and platform; latest.json lists them. The app checks both against its built-in key.
+      - name: Sign for the updater
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign
+          umask 077
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION"
+          entries=""
+          for pair in linux-x86_64:cluster-desk-linux-x86_64.AppImage \
+                      windows-x86_64:cluster-desk-windows-x86_64.zip \
+                      macos:cluster-desk-macos-universal.app.tar.gz; do
+            platform="${pair%%:*}" file="${pair#*:}"
+            minisign -S -s "$RUNNER_TEMP/minisign.key" -m "dist/$file" -t "cluster-desk $VERSION $platform" </dev/null
+            entries="$entries$(jq -n --arg p "$platform" --arg url "$base/$file" --rawfile sig "dist/$file.minisig" \
+              '{($p): {url: $url, signature: $sig}}')"
+          done
+          rm -f "$RUNNER_TEMP/minisign.key"
+          echo "$entries" | jq -s --arg v "$VERSION" '{version: $v, platforms: add}' > dist/latest.json
+          cat dist/latest.json
+
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
