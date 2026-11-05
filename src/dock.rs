@@ -246,7 +246,7 @@ impl App {
                             }
                         });
                     });
-                    if *follow && !busy && last.map(|t| t.elapsed() > Duration::from_secs(3)).unwrap_or(false) {
+                    if *follow && !busy && last.map(|t| t.elapsed() > Duration::from_secs(10)) /* logs refresher: interval(10) */.unwrap_or(false) {
                         refresh = true;
                     }
                     if refresh && !busy {

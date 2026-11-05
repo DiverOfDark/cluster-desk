@@ -196,16 +196,16 @@
     {
       "name": "log auto-refresh interval",
       "group": "data",
-      "value": 3,
-      "estimated": true,
-      "unit": "s"
+      "value": 10,
+      "unit": "s",
+      "source": "static/build/assets/index-qzQrg_7k.js:486713 logs store getRefresher interval(10)"
     },
     {
       "name": "log lines fetched",
       "group": "data",
-      "value": 1000,
-      "estimated": true,
-      "unit": "lines"
+      "value": 500,
+      "unit": "lines",
+      "source": "static/build/assets/index-qzQrg_7k.js:486684 logLinesToLoad"
     },
     {
       "name": "kubectl request timeout",
@@ -217,16 +217,16 @@
     {
       "name": "table row height",
       "group": "layout",
-      "value": 34,
-      "estimated": true,
-      "unit": "px"
+      "value": 33,
+      "unit": "px",
+      "source": "static/build/assets/index-qzQrg_7k.js:307429 Table defaultProps rowLineHeight 17 + 2*rowPadding 8"
     },
     {
       "name": "dock default height",
       "group": "layout",
       "value": 300,
-      "estimated": true,
-      "unit": "px"
+      "unit": "px",
+      "source": "static/build/assets/index-qzQrg_7k.js:280458 dock storage default height"
     },
     {
       "name": "node column flex name/version",

@@ -176,3 +176,14 @@ status bar background `--primary`, text white. → `theme.rs`
 - Extra kubeconfig files merged into `KUBECONFIG`.
 - Per context: how it signs in, read from `kubectl config view -o json` (secrets are redacted by kubectl): exec plugins (OIDC via `kubectl oidc-login`, kubelogin, GKE, EKS, DigitalOcean, …), auth-provider (with a warning that the built-in `oidc` provider was removed in kubectl 1.26), token, client certificate, username/password; whether the plugin program can be found; a **Test** button (`kubectl version`) and **Sign in in a terminal** (runs `kubectl get namespaces` in a real terminal so prompts, device codes and MFA can be answered).
 - Settings are saved as JSON in `~/.config/cluster-desk/settings.json`.
+
+## Values settled later (previously estimated)
+
+| What | Original | Where | In this app |
+|---|---|---|---|
+| Table row height | `rowLineHeight` 17 + 2 × `rowPadding` 8 = **33 px** | `components/table/table.tsx` defaultProps, bundle 307429 | `views::ROW_H` = 33 (header 33) |
+| Log lines | first load `tailLines = logLinesToLoad` = **500**, +500 more each time older lines are requested | `dock/logs/store.ts`, bundle 486684–486707 | `kubectl logs --tail=500` |
+| Log refresh | `interval(10, loadMore)` while the tab is open | bundle 486713 | auto-refresh every **10 s** |
+| Dock height | dock storage default `height: 300` | bundle 280458 | 300 px |
+
+Still different on purpose: the original keeps lists live with Kubernetes **watches**; this app re-lists every 10 s (custom resource definitions every 60 s), and node/volume usage every 30 s.

@@ -165,7 +165,7 @@ fn run_kube(ctx: &str, job: &Job) -> Result<String, String> {
         }
         Job::Logs { ns, pod, container, previous, .. } => {
             a.extend(["logs".into(), pod.clone(), "-n".into(), ns.clone(), "-c".into(), container.clone()]);
-            a.extend(["--tail=1000".into(), "--timestamps".into()]);
+            a.extend(["--tail=500".into() /* logLinesToLoad = 500 */, "--timestamps".into()]);
             if *previous {
                 a.push("--previous".into());
             }

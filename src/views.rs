@@ -9,8 +9,9 @@ use crate::util::{self, arr, s};
 use egui::{Align2, Color32, CornerRadius, FontId, Pos2, Rect, RichText, Sense, Stroke, pos2, vec2};
 use std::sync::Arc;
 
-pub const ROW_H: f32 = 34.0;
-const HEAD_H: f32 = 34.0;
+/// Table rows: rowLineHeight 17 + 2 × rowPadding 8 (table.tsx defaultProps).
+pub const ROW_H: f32 = 33.0;
+const HEAD_H: f32 = 33.0;
 
 pub enum RowAction {
     Open(usize),
