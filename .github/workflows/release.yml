@@ -1,36 +1,149 @@
-# Same as .gitlab-ci.yml, for GitHub: build a Linux release on every push to main.
+# Build packages on every push and pull request:
+#   Linux: AppImage (x86_64)
+#   Windows: zip (x86_64)
+#   macOS: dmg with a universal (Apple Silicon + Intel) app bundle
+# Pushes to main also publish them as a GitHub release.
 name: release
 
 on:
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: write
 
+# A new push to a pull request cancels its older, still-running build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  VERSION: 0.1.${{ github.run_number }}
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Oldest available Ubuntu, so the AppImage runs on older glibc versions too.
+          - os: ubuntu-22.04
+            package: cluster-desk-linux-x86_64.AppImage
+          - os: windows-latest
+            package: cluster-desk-windows-x86_64.zip
+          - os: macos-latest
+            package: cluster-desk-macos-universal.dmg
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: Swatinem/rust-cache@v2
-      - name: System packages
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
-      - name: Build
-        run: cargo build --release --locked
-      - name: Package
+
+      - name: Linux AppImage
+        if: runner.os == 'Linux'
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
+          cargo build --release --locked
+
+          APPDIR=dist/AppDir
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
+          cp target/release/kubelens "$APPDIR/usr/bin/cluster-desk"
+          cp assets/cluster-desk.desktop "$APPDIR/usr/share/applications/"
+          cp assets/icon.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/cluster-desk.png"
+          cp assets/cluster-desk.desktop "$APPDIR/"
+          cp assets/icon.png "$APPDIR/cluster-desk.png"
+          ln -s usr/bin/cluster-desk "$APPDIR/AppRun"
+
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          # Runners have no FUSE; run the tool from its extracted contents.
+          # appimagetool fails with relative paths, so pass absolute ones.
+          APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 ./appimagetool --no-appstream \
+            "$PWD/$APPDIR" "$PWD/dist/${{ matrix.package }}"
+
+      - name: Windows zip
+        if: runner.os == 'Windows'
+        run: |
+          cargo build --release --locked
           mkdir -p dist/cluster-desk
-          cp target/release/kubelens dist/cluster-desk/cluster-desk
+          cp target/release/kubelens.exe dist/cluster-desk/cluster-desk.exe
           cp README.md dist/cluster-desk/
-          tar -czf dist/cluster-desk-linux-x86_64.tar.gz -C dist cluster-desk
+          cd dist && 7z a "${{ matrix.package }}" cluster-desk
+
+      - name: macOS dmg
+        if: runner.os == 'macOS'
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+
+          APP="dist/dmg/Cluster Desk.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          lipo -create -output "$APP/Contents/MacOS/cluster-desk" \
+            target/aarch64-apple-darwin/release/kubelens \
+            target/x86_64-apple-darwin/release/kubelens
+
+          ICONSET=dist/AppIcon.iconset
+          mkdir -p "$ICONSET"
+          for s in 16 32 128 256 512; do
+            sips -z $s $s assets/icon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+            d=$((s * 2))
+            sips -z $d $d assets/icon.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+
+          cat > "$APP/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Cluster Desk</string>
+            <key>CFBundleDisplayName</key><string>Cluster Desk</string>
+            <key>CFBundleIdentifier</key><string>io.github.diverofdark.cluster-desk</string>
+            <key>CFBundleExecutable</key><string>cluster-desk</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$VERSION</string>
+            <key>CFBundleVersion</key><string>$VERSION</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          EOF
+          # Not signed with a developer certificate; an ad-hoc signature keeps Apple Silicon happy.
+          codesign --force --deep --sign - "$APP"
+
+          ln -s /Applications dist/dmg/Applications
+          hdiutil create -volname "Cluster Desk" -srcfolder dist/dmg -ov -format UDZO "dist/${{ matrix.package }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: dist/${{ matrix.package }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="0.1.${{ github.run_number }}"
-          gh release create "v$VERSION" dist/cluster-desk-linux-x86_64.tar.gz \
+          gh release create "v$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Cluster Desk v$VERSION" \
             --notes "Automatic build of ${GITHUB_SHA::7} from main." \
             --target "$GITHUB_SHA"

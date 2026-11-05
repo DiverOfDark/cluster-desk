@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Cluster Desk
+Comment=Fast desktop Kubernetes UI
+Exec=cluster-desk
+Icon=cluster-desk
+Terminal=false
+Categories=Development;
+StartupWMClass=cluster-desk
