@@ -157,6 +157,7 @@ impl App {
         let ctx = self.egui_ctx.clone();
         let (k, h, c) = (self.prefs.kubectl.clone(), self.prefs.helm.clone(), self.prefs.contexts.clone());
         std::thread::spawn(move || {
+            let _ = settings::ensure_fallback_kubectl();
             *k.lock().unwrap() = Some(detect(settings::kubectl_for(None), &["version", "--client", "-o", "json"], kubectl_version));
             ctx.request_repaint();
             *h.lock().unwrap() = Some(detect(settings::helm_cmd(), &["version", "--short"], helm_version));

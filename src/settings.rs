@@ -216,7 +216,8 @@ pub fn env_pairs() -> Vec<(String, String)> {
 }
 
 /// Which kubectl to run for a context: the downloaded matching one when prepared, otherwise
-/// the configured path, otherwise `kubectl` from PATH.
+/// the configured path, otherwise `kubectl` from PATH, otherwise the downloaded stand-in for
+/// the kubectl the original bundles (see `ensure_fallback_kubectl`).
 pub fn kubectl_for(context: Option<&str>) -> String {
     let s = get();
     if s.download_kubectl {
@@ -226,7 +227,45 @@ pub fn kubectl_for(context: Option<&str>) -> String {
             }
         }
     }
-    if s.kubectl_path.trim().is_empty() { "kubectl".into() } else { expand(s.kubectl_path.trim()).display().to_string() }
+    if !s.kubectl_path.trim().is_empty() {
+        return expand(s.kubectl_path.trim()).display().to_string();
+    }
+    if which("kubectl").is_none() {
+        let fallback = fallback_kubectl_path(&s);
+        if fallback.is_file() {
+            return fallback.display().to_string();
+        }
+    }
+    "kubectl".into()
+}
+
+/// The kubectl used before a cluster's version is known, when none is installed: the newest
+/// one in the version map (the original bundles one with the app instead).
+fn fallback_kubectl_version() -> &'static str {
+    KUBECTL_VERSIONS.last().map(|(_, v)| *v).unwrap_or("1.37.1")
+}
+
+fn fallback_kubectl_path(s: &Settings) -> PathBuf {
+    let name = if cfg!(windows) { "kubectl.exe" } else { "kubectl" };
+    binaries_dir(s).join("kubectl").join(fallback_kubectl_version()).join(name)
+}
+
+/// Without a configured kubectl or one on PATH, download the fallback one so contexts can be
+/// listed and cluster versions found (needs "Download kubectl binaries" on). Blocking.
+pub fn ensure_fallback_kubectl() -> Result<(), String> {
+    // One download at a time; the others wait for it and then find the file.
+    static ONE: Mutex<()> = Mutex::new(());
+    let _one = ONE.lock().unwrap_or_else(|e| e.into_inner());
+    let s = get();
+    if !s.kubectl_path.trim().is_empty() || which("kubectl").is_some() || fallback_kubectl_path(&s).is_file() {
+        return Ok(());
+    }
+    if !s.download_kubectl {
+        return Err("kubectl was not found on PATH. Install it, set its path in Preferences → Kubernetes, or turn on kubectl downloads there.".into());
+    }
+    ensure_kubectl(fallback_kubectl_version())
+        .map(|_| ())
+        .map_err(|e| format!("kubectl was not found on PATH, and downloading kubectl v{} failed: {e}", fallback_kubectl_version()))
 }
 
 pub fn helm_cmd() -> String {
@@ -458,6 +497,7 @@ pub fn ensure_helm() -> Result<PathBuf, String> {
 /// Runs on a background thread; progress is kept for the Preferences page and status bar.
 pub fn prepare_for_context(context: String, ctx: eframe::egui::Context) {
     std::thread::spawn(move || {
+        let _ = ensure_fallback_kubectl();
         let out = command(&kubectl_for(None))
             .args(["--context", &context, "version", "-o", "json", "--request-timeout=20s"])
             .output();
