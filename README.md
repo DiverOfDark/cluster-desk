@@ -33,10 +33,16 @@ On Linux you need `pkg-config` and the fontconfig development package
 
 ## Releases
 
-Every commit to `main` builds a Linux x86_64 release:
+Every commit to `main` builds a release:
 
-- GitLab: `.gitlab-ci.yml` (uploads to the project's package registry and creates a release)
-- GitHub: `.github/workflows/release.yml` (creates a GitHub release)
+- GitHub: `.github/workflows/release.yml` builds Linux x86_64, Windows x86_64 and macOS
+  (universal: Apple Silicon + Intel) packages and creates a GitHub release. Pull requests build
+  the same packages without releasing.
+- GitLab: `.gitlab-ci.yml` builds Linux x86_64 only (uploads to the project's package registry and
+  creates a release)
+
+The macOS binary is not signed. After unpacking, run `xattr -d com.apple.quarantine cluster-desk`
+once, or right-click it in Finder and choose Open.
 
 ## Notes
 

@@ -1,36 +1,98 @@
-# Same as .gitlab-ci.yml, for GitHub: build a Linux release on every push to main.
+# Build Linux, Windows and macOS packages on every push and pull request.
+# Pushes to main also publish them as a GitHub release.
 name: release
 
 on:
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            package: cluster-desk-linux-x86_64.tar.gz
+          - os: windows-latest
+            package: cluster-desk-windows-x86_64.zip
+          - os: macos-latest
+            package: cluster-desk-macos-universal.tar.gz
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: Swatinem/rust-cache@v2
+
       - name: System packages
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
-      - name: Build
-        run: cargo build --release --locked
-      - name: Package
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
         run: |
+          cargo build --release --locked
           mkdir -p dist/cluster-desk
           cp target/release/kubelens dist/cluster-desk/cluster-desk
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cargo build --release --locked
+          mkdir -p dist/cluster-desk
+          cp target/release/kubelens.exe dist/cluster-desk/cluster-desk.exe
+
+      - name: Build (macOS, Apple Silicon + Intel)
+        if: runner.os == 'macOS'
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          mkdir -p dist/cluster-desk
+          lipo -create -output dist/cluster-desk/cluster-desk \
+            target/aarch64-apple-darwin/release/kubelens \
+            target/x86_64-apple-darwin/release/kubelens
+
+      - name: Package
+        run: |
           cp README.md dist/cluster-desk/
-          tar -czf dist/cluster-desk-linux-x86_64.tar.gz -C dist cluster-desk
+          cd dist
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a "${{ matrix.package }}" cluster-desk
+          else
+            tar -czf "${{ matrix.package }}" cluster-desk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: dist/${{ matrix.package }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="0.1.${{ github.run_number }}"
-          gh release create "v$VERSION" dist/cluster-desk-linux-x86_64.tar.gz \
+          gh release create "v$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Cluster Desk v$VERSION" \
             --notes "Automatic build of ${GITHUB_SHA::7} from main." \
             --target "$GITHUB_SHA"
