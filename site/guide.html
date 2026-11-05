@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide · Cluster Desk</title>
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./"><img src="img/icon.svg" alt="">Cluster Desk</a>
+  <nav>
+    <a href="install.html">Install</a>
+    <a href="guide.html" class="on">Guide</a>
+    <a href="preferences.html">Preferences</a>
+    <a href="build.html">Build</a>
+  </nav>
+  <a class="gh" href="https://github.com/DiverOfDark/cluster-desk">GitHub</a>
+</header>
+
+<main>
+  <h1>Guide</h1>
+  <p class="lead">How to get around a cluster: lists, details, edits, logs and shells.</p>
+
+  <h2 id="layout">The window</h2>
+  <table>
+    <tr><th>Area</th><th>What it holds</th></tr>
+    <tr><td>Hotbar (far left)</td><td>The Catalog button on top, then one icon per opened cluster. The gear at the bottom opens Preferences.</td></tr>
+    <tr><td>Sidebar</td><td>Resource groups of the current cluster: Cluster, Nodes, Workloads, Config, Network, Storage, Namespaces, Events, Access Control, Custom Resources.</td></tr>
+    <tr><td>Main area</td><td>The list or overview you picked. Back and forward arrows sit in the top bar.</td></tr>
+    <tr><td>Dock (bottom)</td><td>Tabs for logs, shells and YAML editors. Several can be open at once.</td></tr>
+    <tr><td>Status bar</td><td>The cluster and its connection state. Shows a notice when an update is ready.</td></tr>
+  </table>
+
+  <h2 id="overviews">Overviews</h2>
+  <p><strong>Cluster</strong> shows CPU, memory and pod rings (usage, requests, limits, allocatable, capacity) and the
+    current warning events. <strong>Workloads → Overview</strong> shows the state of pods, deployments, daemon sets,
+    stateful sets, replica sets, jobs and cron jobs, followed by recent events.</p>
+  <figure><img src="img/workloads.jpg" alt="Workloads overview" loading="lazy"></figure>
+
+  <h2 id="lists">Resource lists</h2>
+  <ul>
+    <li>Pick a namespace from the <em>Namespace</em> menu, or keep <em>All namespaces</em>.</li>
+    <li>Type in the search box to filter rows.</li>
+    <li>Click a column header to sort.</li>
+    <li>The <kbd>⋮</kbd> menu at the end of a row has the actions for that object.</li>
+  </ul>
+  <p>Lists refresh by themselves. Nodes show live CPU and memory bars from metrics-server, every 30 seconds:
+    the bright part is usage, the faded part is requests. Without metrics-server the bars read <code>N/A</code>.</p>
+  <figure><img src="img/nodes.jpg" alt="Nodes list with usage bars" loading="lazy"></figure>
+
+  <h2 id="details">Details drawer</h2>
+  <p>Click a row to open its details on the right: metadata, labels, status, conditions, and the parts that matter for
+    the kind (containers for pods, rules for ingresses, and so on). <kbd>Esc</kbd> closes it.</p>
+  <figure><img src="img/details.jpg" alt="Pod details drawer" loading="lazy"></figure>
+  <p>The drawer's title bar has the actions:</p>
+  <table>
+    <tr><th>Action</th><th>Available for</th></tr>
+    <tr><td>Edit</td><td>Every kind. Opens the YAML in the dock.</td></tr>
+    <tr><td>Delete</td><td>Every kind, after a confirmation.</td></tr>
+    <tr><td>Scale</td><td>Deployments, stateful sets, replica sets.</td></tr>
+    <tr><td>Restart</td><td>Deployments, stateful sets, daemon sets. Pods are replaced one by one.</td></tr>
+    <tr><td>Logs, Shell</td><td>Pods, per container.</td></tr>
+    <tr><td>Open in browser</td><td>Ingresses with a host.</td></tr>
+  </table>
+
+  <h2 id="edit">Editing YAML</h2>
+  <p>Edit opens the object in a dock tab. <em>Save</em> applies it and keeps the tab open;
+    <em>Save &amp; Close</em> applies and closes; <em>Cancel</em> drops the changes. Unsaved edits show
+    <span style="color:#ff9800">● modified</span>.</p>
+  <figure><img src="img/edit.jpg" alt="YAML editor in the dock" loading="lazy"></figure>
+
+  <h2 id="logs">Pod logs</h2>
+  <ul>
+    <li>Pick the <em>Container</em>, or tick <em>Previous container</em> to read the log of the last crashed run.</li>
+    <li><em>Show timestamps</em> and <em>Auto-refresh</em> (every 10 seconds) are toggles.</li>
+    <li>Type in the search box: matches are highlighted. <kbd>Enter</kbd> or the arrows jump between them.</li>
+    <li>ANSI colours in the log are kept.</li>
+  </ul>
+  <figure><img src="img/logs.jpg" alt="Pod logs with highlighted matches" loading="lazy"></figure>
+
+  <h2 id="shell">Pod shell</h2>
+  <p>Shell runs <code>kubectl exec -it</code> into the chosen container, in a real terminal: colours, Unicode, mouse
+    selection and links.</p>
+  <table>
+    <tr><th>Keys</th><th>Does</th></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copies when text is selected; otherwise interrupts, as usual.</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Pastes.</td></tr>
+    <tr><td>Click a link</td><td>Opens it in your browser.</td></tr>
+  </table>
+  <p>Font size and copy-on-select live in <a href="preferences.html#terminal">Preferences → Terminal</a>.</p>
+  <figure><img src="img/shell.jpg" alt="Terminal inside a pod" loading="lazy"></figure>
+
+  <h2 id="crds">Custom resources</h2>
+  <p><strong>Custom Resources</strong> lists every CRD in the cluster, grouped by API group
+    (<code>cert-manager.io</code>, <code>monitoring.coreos.com</code>, …). Each list uses the columns its definition declares
+    (<code>additionalPrinterColumns</code>). <em>Definitions</em> lists the CRDs themselves.</p>
+  <figure><img src="img/crd.jpg" alt="cert-manager Certificates list" loading="lazy"></figure>
+
+  <div class="next">
+    <a href="install.html">← Install</a>
+    <a href="preferences.html">Preferences →</a>
+  </div>
+</main>
+
+<footer>Cluster Desk · <a href="https://github.com/DiverOfDark/cluster-desk">source on GitHub</a></footer>
+</body>
+</html>

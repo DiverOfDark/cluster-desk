@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build · Cluster Desk</title>
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./"><img src="img/icon.svg" alt="">Cluster Desk</a>
+  <nav>
+    <a href="install.html">Install</a>
+    <a href="guide.html">Guide</a>
+    <a href="preferences.html">Preferences</a>
+    <a href="build.html" class="on">Build</a>
+  </nav>
+  <a class="gh" href="https://github.com/DiverOfDark/cluster-desk">GitHub</a>
+</header>
+
+<main>
+  <h1>Build from source</h1>
+  <p class="lead">Cluster Desk is a single Rust crate using <a href="https://github.com/emilk/egui">egui</a>.</p>
+
+  <pre><code>git clone https://github.com/DiverOfDark/cluster-desk.git
+cd cluster-desk
+cargo build --release
+./target/release/kubelens</code></pre>
+
+  <p>On Linux, install <code>pkg-config</code> and the fontconfig development package first
+    (<code>libfontconfig1-dev</code> on Debian/Ubuntu, <code>fontconfig-devel</code> on Fedora).</p>
+  <p>Builds made with plain <code>cargo build</code> don't update themselves.</p>
+
+  <h2 id="screenshot">Screenshots without a window</h2>
+  <pre><code>kubelens --screenshot out.png</code></pre>
+  <p>Renders the built-in sample cluster off-screen and saves a picture. CI and tests use it.</p>
+
+  <h2 id="releases">How releases are made</h2>
+  <p>Every commit to <code>main</code> runs <code>.github/workflows/release.yml</code>:</p>
+  <ol>
+    <li>Builds a Linux AppImage (on Ubuntu 22.04), a Windows zip and a universal macOS dmg.</li>
+    <li>Signs the update packages with the <code>MINISIGN_SECRET_KEY</code> repository secret.</li>
+    <li>Publishes a GitHub release <code>v0.1.&lt;run number&gt;</code> with the packages, signatures and <code>latest.json</code>.</li>
+  </ol>
+  <p>Pull requests build the same packages without releasing.</p>
+  <div class="note warn">
+    <p>Keep a copy of the minisign secret key. Installed copies refuse any release signed with a different key.</p>
+  </div>
+  <p>To test the updater against another feed, set <code>CLUSTER_DESK_UPDATE_URL</code> to the URL of a
+    <code>latest.json</code>.</p>
+
+  <h2 id="docs">This site</h2>
+  <p>Plain HTML in <code>site/</code>, published to GitHub Pages by <code>.github/workflows/pages.yml</code> on every push to
+    <code>main</code> that touches it. Screenshots come from the sample cluster.</p>
+
+  <h2 id="credits">Credits</h2>
+  <p>The look and behaviour follow <a href="https://github.com/freelensapp/freelens">FreeLens</a>
+    (MIT, © Freelens Authors, © OpenLens Authors). <code>MECHANICS.md</code> in the repository lists which behaviours,
+    colours and values come from it. The pinned kubectl checksum table is taken from FreeLens too.</p>
+
+  <div class="next">
+    <a href="preferences.html">← Preferences</a>
+    <span></span>
+  </div>
+</main>
+
+<footer>Cluster Desk · <a href="https://github.com/DiverOfDark/cluster-desk">source on GitHub</a></footer>
+</body>
+</html>
