@@ -48,9 +48,23 @@ fn main() -> eframe::Result<()> {
             .with_inner_size(size)
             .with_min_inner_size([900.0, 560.0])
             .with_icon(eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png")).unwrap_or_default()),
+        wgpu_options: low_power_wgpu(),
         ..Default::default()
     };
     eframe::run_native("Cluster Desk", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, screenshot)))))
+}
+
+/// eframe asks wgpu for the high-performance adapter by default, which on a laptop or a
+/// desktop with two GPUs wakes the discrete card (and makes the compositor copy every frame
+/// across). A list-and-text UI has no use for it, so prefer the integrated GPU.
+/// `WGPU_POWER_PREF=high` still overrides this.
+fn low_power_wgpu() -> eframe::egui_wgpu::WgpuConfiguration {
+    let mut cfg = eframe::egui_wgpu::WgpuConfiguration::default();
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut cfg.wgpu_setup {
+        setup.power_preference =
+            eframe::egui_wgpu::wgpu::PowerPreference::from_env().unwrap_or(eframe::egui_wgpu::wgpu::PowerPreference::LowPower);
+    }
+    cfg
 }
 
 fn headless_screenshot(path: PathBuf, size: [f32; 2]) -> eframe::Result<()> {
