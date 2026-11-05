@@ -35,14 +35,18 @@ On Linux you need `pkg-config` and the fontconfig development package
 
 Every commit to `main` builds a release:
 
-- GitHub: `.github/workflows/release.yml` builds Linux x86_64, Windows x86_64 and macOS
-  (universal: Apple Silicon + Intel) packages and creates a GitHub release. Pull requests build
-  the same packages without releasing.
-- GitLab: `.gitlab-ci.yml` builds Linux x86_64 only (uploads to the project's package registry and
-  creates a release)
+- GitHub: `.github/workflows/release.yml` builds a Linux AppImage (x86_64), a Windows zip (x86_64)
+  and a macOS dmg (universal: Apple Silicon + Intel), and creates a GitHub release. Pull requests
+  build the same packages without releasing.
+- GitLab: `.gitlab-ci.yml` builds a Linux x86_64 tarball only (uploads to the project's package
+  registry and creates a release)
 
-The macOS binary is not signed. After unpacking, run `xattr -d com.apple.quarantine cluster-desk`
-once, or right-click it in Finder and choose Open.
+Linux: `chmod +x cluster-desk-linux-x86_64.AppImage`, then run it.
+
+macOS: open the dmg and drag Cluster Desk to Applications. The app is not signed with a developer
+certificate, so macOS blocks the first launch. Allow it once with
+`xattr -dr com.apple.quarantine "/Applications/Cluster Desk.app"`, or open it and then choose
+System Settings → Privacy & Security → Open Anyway.
 
 ## Notes
 

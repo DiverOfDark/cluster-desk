@@ -45,7 +45,8 @@ fn main() -> eframe::Result<()> {
             .with_title("Cluster Desk")
             .with_app_id("cluster-desk")
             .with_inner_size(size)
-            .with_min_inner_size([900.0, 560.0]),
+            .with_min_inner_size([900.0, 560.0])
+            .with_icon(eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png")).unwrap_or_default()),
         ..Default::default()
     };
     eframe::run_native("Cluster Desk", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, screenshot)))))
