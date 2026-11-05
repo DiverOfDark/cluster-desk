@@ -1,0 +1,513 @@
+{
+  "version": 1,
+  "values": [
+    {
+      "name": "node usage refresh interval",
+      "group": "data",
+      "value": 30,
+      "source": "static/build/assets/index-qzQrg_7k.js:517688 nodes/route.tsx interval(30)",
+      "unit": "s"
+    },
+    {
+      "name": "node usage bar maximum",
+      "group": "nodes",
+      "value": "allocatable (status.allocatable)",
+      "source": "static/build/assets/index-qzQrg_7k.js:517785 renderCpuUsage"
+    },
+    {
+      "name": "requests layer opacity",
+      "group": "nodes",
+      "value": 0.5,
+      "source": "static/build/assets/index-Mav7N3RQ.css .LineProgress .line.secondary"
+    },
+    {
+      "name": "usage bar height",
+      "group": "nodes",
+      "value": 5,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell .metrics .LineProgress",
+      "unit": "px"
+    },
+    {
+      "name": "usage bar text gap",
+      "group": "nodes",
+      "value": 4,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell .metrics",
+      "unit": "px"
+    },
+    {
+      "name": "cores decimals below 10 / at or above 10",
+      "group": "nodes",
+      "value": "2 / 1",
+      "source": "static/build/assets/index-qzQrg_7k.js:517677 formatCores"
+    },
+    {
+      "name": "cpu bar colour",
+      "group": "theme",
+      "value": "#00a7a0",
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.cpu .LineProgress (--blue)"
+    },
+    {
+      "name": "memory bar colour",
+      "group": "theme",
+      "value": "#c93dce",
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.memory .LineProgress (--magenta)"
+    },
+    {
+      "name": "disk bar colour",
+      "group": "theme",
+      "value": "#ffc63d",
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.disk .LineProgress (--golden)"
+    },
+    {
+      "name": "node column flex cpu/memory/disk",
+      "group": "layout",
+      "value": 0.6,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.cpu"
+    },
+    {
+      "name": "node column flex roles",
+      "group": "layout",
+      "value": 1.5,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.roles"
+    },
+    {
+      "name": "node column flex internal ip",
+      "group": "layout",
+      "value": 1.3,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.internalIp"
+    },
+    {
+      "name": "node column flex age",
+      "group": "layout",
+      "value": 0.4,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.age"
+    },
+    {
+      "name": "node column flex conditions",
+      "group": "layout",
+      "value": 1.7,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Nodes .TableCell.conditions"
+    },
+    {
+      "name": "accent colour",
+      "group": "theme",
+      "value": "#00a7a0",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 lens-dark theme primary"
+    },
+    {
+      "name": "content background",
+      "group": "theme",
+      "value": "#1e2124",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 mainBackground"
+    },
+    {
+      "name": "sidebar background",
+      "group": "theme",
+      "value": "#36393e",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 sidebarBackground"
+    },
+    {
+      "name": "hotbar background",
+      "group": "theme",
+      "value": "#252729",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 clusterMenuBackground"
+    },
+    {
+      "name": "top bar background",
+      "group": "theme",
+      "value": "#2e3136",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 layoutBackground"
+    },
+    {
+      "name": "table stripe",
+      "group": "theme",
+      "value": "#2a2d33",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 tableBgcStripe"
+    },
+    {
+      "name": "table hover/selected",
+      "group": "theme",
+      "value": "#383c42",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 tableBgcSelected"
+    },
+    {
+      "name": "cluster hotbar width",
+      "group": "layout",
+      "value": 75,
+      "source": "static/build/assets/index-Mav7N3RQ.css --hotbar-width",
+      "unit": "px"
+    },
+    {
+      "name": "top bar height",
+      "group": "layout",
+      "value": 40,
+      "source": "static/build/assets/index-Mav7N3RQ.css --main-layout-header",
+      "unit": "px"
+    },
+    {
+      "name": "status bar height",
+      "group": "layout",
+      "value": 21,
+      "source": "static/build/assets/index-Mav7N3RQ.css --status-bar-height",
+      "unit": "px"
+    },
+    {
+      "name": "sidebar default width",
+      "group": "layout",
+      "value": 200,
+      "source": "static/build/assets/index-qzQrg_7k.js:422143 sidebar storage",
+      "unit": "px"
+    },
+    {
+      "name": "details drawer default width",
+      "group": "layout",
+      "value": 725,
+      "source": "static/build/assets/index-qzQrg_7k.js:303118 drawer storage",
+      "unit": "px"
+    },
+    {
+      "name": "drawer title min height",
+      "group": "layout",
+      "value": 54,
+      "source": "static/build/assets/index-Mav7N3RQ.css .Drawer .drawer-title",
+      "unit": "px"
+    },
+    {
+      "name": "body font size",
+      "group": "layout",
+      "value": 14,
+      "source": "static/build/assets/index-Mav7N3RQ.css --font-size",
+      "unit": "px"
+    },
+    {
+      "name": "small font size",
+      "group": "layout",
+      "value": 12,
+      "source": "static/build/assets/index-Mav7N3RQ.css --font-size-small",
+      "unit": "px"
+    },
+    {
+      "name": "resource list refresh interval",
+      "group": "data",
+      "value": 10,
+      "estimated": true,
+      "unit": "s"
+    },
+    {
+      "name": "log auto-refresh interval",
+      "group": "data",
+      "value": 3,
+      "estimated": true,
+      "unit": "s"
+    },
+    {
+      "name": "log lines fetched",
+      "group": "data",
+      "value": 1000,
+      "estimated": true,
+      "unit": "lines"
+    },
+    {
+      "name": "kubectl request timeout",
+      "group": "data",
+      "value": 30,
+      "estimated": true,
+      "unit": "s"
+    },
+    {
+      "name": "table row height",
+      "group": "layout",
+      "value": 34,
+      "estimated": true,
+      "unit": "px"
+    },
+    {
+      "name": "dock default height",
+      "group": "layout",
+      "value": 300,
+      "estimated": true,
+      "unit": "px"
+    },
+    {
+      "name": "node column flex name/version",
+      "group": "layout",
+      "value": 1.0,
+      "estimated": true
+    },
+    {
+      "name": "minimum usage column width",
+      "group": "layout",
+      "value": 120,
+      "estimated": true,
+      "unit": "px"
+    },
+    {
+      "name": "pod shell command",
+      "group": "terminal",
+      "value": "kubectl exec -i -t -n <ns> <pod> -c <container> -- sh -c \"clear; (bash || ash || sh)\"",
+      "source": "static/build/assets/index-qzQrg_7k.js:517478"
+    },
+    {
+      "name": "terminal background",
+      "group": "terminal",
+      "value": "#000000",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 terminalColors.background"
+    },
+    {
+      "name": "terminal foreground",
+      "group": "terminal",
+      "value": "#ffffff",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 terminalColors.foreground"
+    },
+    {
+      "name": "terminal selection",
+      "group": "terminal",
+      "value": "#264f78",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 terminalColors.selectionBackground"
+    },
+    {
+      "name": "terminal scrollback",
+      "group": "terminal",
+      "value": 1000,
+      "unit": "lines",
+      "source": "static/build/assets/index-qzQrg_7k.js:275936 xterm.js default scrollback"
+    },
+    {
+      "name": "terminal font size",
+      "group": "terminal",
+      "value": 12,
+      "unit": "px",
+      "source": "static/build/assets/index-qzQrg_7k.js:280519 defaultTerminalConfig.fontSize"
+    },
+    {
+      "name": "terminal cursor",
+      "group": "terminal",
+      "value": "blinking bar",
+      "source": "static/build/assets/index-qzQrg_7k.js:279731 terminal.ts cursorBlink/cursorStyle"
+    },
+    {
+      "name": "terminal copy on select",
+      "group": "terminal",
+      "value": false,
+      "source": "static/build/assets/index-qzQrg_7k.js:452878 terminalCopyOnSelect default"
+    },
+    {
+      "name": "pod shell tab title",
+      "group": "terminal",
+      "value": "Pod: <name> (namespace: <ns>)",
+      "source": "static/build/assets/index-qzQrg_7k.js:517480 execShell"
+    },
+    {
+      "name": "label badge background",
+      "group": "theme",
+      "value": "#36393e",
+      "source": "static/build/assets/index-Mav7N3RQ.css .badge-module__badge (--colorVague)"
+    },
+    {
+      "name": "label badge padding",
+      "group": "layout",
+      "value": "3.2 x 6.4",
+      "unit": "px",
+      "source": "static/build/assets/index-Mav7N3RQ.css .badge-module__badge padding 0.2rem 0.4rem"
+    },
+    {
+      "name": "label badge margin",
+      "group": "layout",
+      "value": 4,
+      "unit": "px",
+      "source": "static/build/assets/index-Mav7N3RQ.css .DrawerItem.labelsOnly > .value > div"
+    },
+    {
+      "name": "drawer row name column",
+      "group": "layout",
+      "value": "minmax(30%, min-content)",
+      "source": "static/build/assets/index-Mav7N3RQ.css .DrawerItem"
+    },
+    {
+      "name": "drawer row padding",
+      "group": "layout",
+      "value": 8,
+      "unit": "px",
+      "source": "static/build/assets/index-Mav7N3RQ.css .DrawerItem"
+    },
+    {
+      "name": "ingress link protocol",
+      "group": "ingress",
+      "value": "https if spec.tls non-empty else http",
+      "source": "static/build/assets/index-qzQrg_7k.js:281580 computeRuleDeclarations"
+    },
+    {
+      "name": "volume usage colour",
+      "group": "theme",
+      "value": "#ffc63d",
+      "source": "static/build/assets/index-qzQrg_7k.js:441323 volume-claim-disk-chart"
+    },
+    {
+      "name": "volume usage refresh interval",
+      "group": "data",
+      "value": 30,
+      "unit": "s",
+      "estimated": true
+    },
+    {
+      "name": "log ANSI palette (normal)",
+      "group": "logs",
+      "value": "#000000 #bb0000 #00bb00 #bbbb00 #0000bb #bb00bb #00bbbb #ffffff",
+      "source": "static/build/assets/index-qzQrg_7k.js:523603 ansi_up setup_palettes"
+    },
+    {
+      "name": "log ANSI palette (bright)",
+      "group": "logs",
+      "value": "#555555 #ff5555 #00ff00 #ffff55 #5555ff #ff55ff #55ffff #ffffff",
+      "source": "static/build/assets/index-qzQrg_7k.js:523603 ansi_up setup_palettes"
+    },
+    {
+      "name": "log row height",
+      "group": "logs",
+      "value": 18,
+      "unit": "px",
+      "source": "static/build/assets/index-Mav7N3RQ.css .LogList .LogRow height"
+    },
+    {
+      "name": "log row padding",
+      "group": "logs",
+      "value": "2 x 16",
+      "unit": "px",
+      "source": "static/build/assets/index-Mav7N3RQ.css .LogList .LogRow padding"
+    },
+    {
+      "name": "log row hover",
+      "group": "logs",
+      "value": "#35373a",
+      "source": "static/build/assets/index-qzQrg_7k.js:526585 logRowHoverBackground"
+    },
+    {
+      "name": "log search match",
+      "group": "logs",
+      "value": "#8cc474b8",
+      "source": "static/build/assets/index-Mav7N3RQ.css .LogList --overlay-bg"
+    },
+    {
+      "name": "log active search match",
+      "group": "logs",
+      "value": "orange",
+      "source": "static/build/assets/index-Mav7N3RQ.css .LogList --overlay-active-bg"
+    },
+    {
+      "name": "custom resource printer columns",
+      "group": "crd",
+      "value": "additionalPrinterColumns without age and without priority",
+      "source": "static/build/assets/index-qzQrg_7k.js:281241 getPrinterColumns(false)"
+    },
+    {
+      "name": "custom resource kind title",
+      "group": "crd",
+      "value": "split at case changes",
+      "source": "static/build/assets/index-qzQrg_7k.js:484067 formatResourceKind"
+    },
+    {
+      "name": "custom resource sidebar order",
+      "group": "crd",
+      "value": "by group, then plural name",
+      "source": "static/build/assets/index-qzQrg_7k.js:484110 sortBy(group, apiName)"
+    },
+    {
+      "name": "definition list refresh interval",
+      "group": "data",
+      "value": 60,
+      "unit": "s",
+      "estimated": true
+    },
+    {
+      "name": "condition badge order",
+      "group": "details",
+      "value": "newest lastTransitionTime first, then type priority",
+      "source": "static/build/assets/index-qzQrg_7k.js:421115 sortConditions"
+    },
+    {
+      "name": "condition type priorities",
+      "group": "details",
+      "value": "Synced 6, Ready 5, Initialized 4, ContainersReady/ArtifactInStorage/Released 3, PodReadyToStartContainers 2, PodScheduled 1",
+      "source": "static/build/assets/index-qzQrg_7k.js:421115 defaultConditionTypePriorities"
+    },
+    {
+      "name": "false/unknown condition opacity",
+      "group": "details",
+      "value": 0.5,
+      "source": "static/build/assets/index-Mav7N3RQ.css .badge-module__disabled"
+    },
+    {
+      "name": "ready condition badge",
+      "group": "theme",
+      "value": "#43a047 background, white text",
+      "source": "static/build/assets/index-Mav7N3RQ.css .PodDetails .conditions .Ready"
+    },
+    {
+      "name": "custom resource page title",
+      "group": "crd",
+      "value": "kind",
+      "source": "static/build/assets/index-qzQrg_7k.js:484512 renderHeaderTitle: resource.kind"
+    },
+    {
+      "name": "custom resource details columns",
+      "group": "crd",
+      "value": "all printer columns except age",
+      "source": "static/build/assets/index-qzQrg_7k.js:281241 getPrinterColumns()"
+    },
+    {
+      "name": "download kubectl binaries (default)",
+      "group": "preferences",
+      "value": true,
+      "source": "static/build/assets/index-qzQrg_7k.js:452831 downloadKubectlBinaries"
+    },
+    {
+      "name": "default kubectl download mirror",
+      "group": "preferences",
+      "value": "https://dl.k8s.io/release",
+      "source": "static/build/main.js:28649 packageMirrors"
+    },
+    {
+      "name": "kubectl version map",
+      "group": "preferences",
+      "value": "1.22.17 \u2026 1.37.1 by minor version",
+      "source": "static/build/main.js:29649 kubectlVersions"
+    },
+    {
+      "name": "kubectl download url",
+      "group": "preferences",
+      "value": "<mirror>/v<ver>/bin/<os>/<arch>/kubectl",
+      "source": "static/build/main.js:28787 Kubectl constructor"
+    },
+    {
+      "name": "bundled helm version",
+      "group": "preferences",
+      "value": "4.3.1",
+      "source": "package.json config.bundledHelmVersion"
+    },
+    {
+      "name": "settings file",
+      "group": "preferences",
+      "value": "~/.config/cluster-desk/settings.json",
+      "estimated": true
+    },
+    {
+      "name": "kubectl pinned checksums",
+      "group": "preferences",
+      "value": "113 entries, 1.22.17\u20131.37.1",
+      "source": "static/build/main.js:29155 checksums.json"
+    },
+    {
+      "name": "allow untrusted CAs (default)",
+      "group": "preferences",
+      "value": false,
+      "source": "static/build/assets/index-qzQrg_7k.js:452815 allowUntrustedCAs"
+    },
+    {
+      "name": "terminal font size range",
+      "group": "preferences",
+      "value": "10\u201350",
+      "unit": "px",
+      "source": "static/build/assets/index-qzQrg_7k.js:463135 TerminalFontSize input min/max"
+    }
+  ]
+}

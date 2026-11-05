@@ -1,0 +1,36 @@
+# Same as .gitlab-ci.yml, for GitHub: build a Linux release on every push to main.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
+      - name: Build
+        run: cargo build --release --locked
+      - name: Package
+        run: |
+          mkdir -p dist/cluster-desk
+          cp target/release/kubelens dist/cluster-desk/cluster-desk
+          cp README.md dist/cluster-desk/
+          tar -czf dist/cluster-desk-linux-x86_64.tar.gz -C dist cluster-desk
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="0.1.${{ github.run_number }}"
+          gh release create "v$VERSION" dist/cluster-desk-linux-x86_64.tar.gz \
+            --title "Cluster Desk v$VERSION" \
+            --notes "Automatic build of ${GITHUB_SHA::7} from main." \
+            --target "$GITHUB_SHA"
