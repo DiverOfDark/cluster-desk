@@ -1,0 +1,61 @@
+/* Cluster Desk colours (src/theme.rs) on top of mdBook's dark "coal" theme. */
+.coal {
+  --bg: #1e2124;
+  --fg: #c9ced3;
+  --sidebar-bg: #252729;
+  --sidebar-fg: #a0a0a0;
+  --sidebar-non-existant: #505254;
+  --sidebar-active: #34dccd;
+  --sidebar-spacer: #373a3e;
+  --scrollbar: #4c5053;
+  --icons: #8e9297;
+  --icons-hover: #ffffff;
+  --links: #34dccd;
+  --inline-code-color: #e4e7ea;
+  --theme-popup-bg: #2e3136;
+  --theme-popup-border: #4c5053;
+  --theme-hover: #3a3e44;
+  --quote-bg: #262b2f;
+  --quote-border: #373a3e;
+  --table-border-color: #373a3e;
+  --table-header-bg: #262b2f;
+  --table-alternate-bg: #22262a;
+  --searchbar-border-color: #414448;
+  --searchbar-bg: #1e2125;
+  --searchbar-fg: #ffffff;
+  --searchresults-header-fg: #8e9297;
+  --searchresults-border-color: #373a3e;
+  --search-mark-bg: #00a7a0;
+}
+
+.coal .content h1, .coal .content h2, .coal .content h3 { color: #ffffff; }
+.coal pre, .coal .hljs { background: #15181b; }
+
+.content img { max-width: 100%; border-radius: 8px; border: 1px solid #373a3e; }
+
+/* Landing page */
+.hero { text-align: center; padding: 8px 0 4px; }
+.hero img.logo { width: 104px; height: 104px; border: none; }
+.hero h1 { font-size: 2.6em; margin: 8px 0 4px; }
+.hero .lead { font-size: 1.15em; color: #8e9297; max-width: 620px; margin: 0 auto 22px; }
+
+.downloads { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.content a.btn {
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+  min-width: 190px; padding: 10px 18px;
+  background: #262b2f; border: 1px solid #373a3e; border-radius: 8px;
+  color: #ffffff; font-weight: 600; text-decoration: none;
+}
+.content a.btn small { color: #8e9297; font-weight: 400; font-size: 0.8em; }
+.content a.btn:hover { border-color: #00a7a0; }
+.content a.btn.primary { background: #00a7a0; border-color: #00a7a0; }
+.content a.btn.primary small { color: #d8fffb; }
+.content a.btn.primary:hover { background: #00bdb5; }
+.hero .sub { color: #8e9297; font-size: 0.9em; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.card { background: #262b2f; border: 1px solid #373a3e; border-radius: 8px; overflow: hidden; }
+.card img { display: block; width: 100%; border: none; border-bottom: 1px solid #373a3e; border-radius: 0; }
+.card > div { padding: 10px 14px 14px; }
+.card h3 { margin: 0 0 4px; font-size: 1.05em; }
+.card p { margin: 0; color: #8e9297; font-size: 0.92em; }
