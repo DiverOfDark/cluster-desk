@@ -103,7 +103,8 @@ impl App {
 
     pub fn overview(&mut self, ui: &mut egui::Ui) {
         let nodes = self.rows(Kind::Node);
-        let pods = self.rows(Kind::Pod);
+        // Cluster figures add up every namespace's pods, never a namespace selection's.
+        let pods = self.all_pods().unwrap_or_default();
         let events = self.rows(Kind::Event);
         ui.horizontal(|ui| {
             ui.label(RichText::new("Cluster").size(theme::FONT_SIZE + 4.0).color(theme::TEXT_TERTIARY));

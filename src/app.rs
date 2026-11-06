@@ -336,9 +336,19 @@ impl App {
         self.store.get(&kind).map(|d| d.rows.clone()).unwrap_or_default()
     }
 
-    /// Namespaces a list of `kind` is fetched for: the selected ones (empty = all).
+    /// Namespaces a list of `kind` is fetched for: the selected ones (empty = all). Pods are
+    /// fetched from every namespace while node or cluster figures are shown, since those add up
+    /// the requests of all pods.
     fn list_scope(&self, kind: Kind) -> Vec<String> {
-        if kind.namespaced() { self.ns_filter.iter().cloned().collect() } else { vec![] }
+        let all_pods = matches!(self.view, View::Overview | View::List(Kind::Node))
+            || self.selected.as_ref().is_some_and(|s| s.0 == Kind::Node);
+        if !kind.namespaced() || (kind == Kind::Pod && all_pods) { vec![] } else { self.ns_filter.iter().cloned().collect() }
+    }
+
+    /// Pods of every namespace, once loaded (None while only some namespaces are loaded).
+    pub fn all_pods(&self) -> Option<Arc<Vec<Row>>> {
+        let d = self.store.get(&Kind::Pod)?;
+        (d.loaded.is_some() && d.error.is_none() && d.scope.is_empty()).then(|| d.rows.clone())
     }
 
     pub fn ensure(&mut self, kind: Kind) {
@@ -428,14 +438,14 @@ impl App {
     /// Fill the CPU and Memory columns of the nodes table the way the original does:
     /// usage from the metrics server over requests of the node's running pods, against allocatable.
     fn apply_node_metrics(&mut self) {
-        let pods_loaded = self.store.get(&Kind::Pod).map(|d| d.loaded.is_some() && d.error.is_none()).unwrap_or(false);
-        let pods = self.rows(Kind::Pod);
+        // Requests are only shown when they count every namespace's pods.
+        let pods = self.all_pods();
         let usage = self.node_usage.clone().unwrap_or_default();
         let Some(d) = self.store.get_mut(&Kind::Node) else { return };
         let rows = Arc::make_mut(&mut d.rows);
         for r in rows.iter_mut() {
             let (cpu, mem) = usage.get(&r.name).copied().unwrap_or((f64::NAN, f64::NAN));
-            let req = if pods_loaded { Some(crate::model::node_requests(&r.name, &pods)) } else { None };
+            let req = pods.as_ref().map(|pods| crate::model::node_requests(&r.name, pods));
             if r.cells.len() > 2 {
                 r.cells[1] = crate::model::Cell::Meter(crate::model::node_cpu_meter(&r.obj, cpu, req.map(|x| x.0)));
                 r.cells[2] = crate::model::Cell::Meter(crate::model::node_memory_meter(&r.obj, mem, req.map(|x| x.1)));
