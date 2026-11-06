@@ -100,7 +100,7 @@ impl Terminal {
             .openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
             .map_err(|e| format!("Could not open a terminal: {e}"))?;
         let mut cmd = CommandBuilder::new(crate::settings::kubectl_for(Some(context)));
-        for (k, v) in crate::settings::env_pairs() {
+        for (k, v) in crate::settings::env_pairs_for(Some(context)) {
             cmd.env(k, v);
         }
         cmd.args([
@@ -181,7 +181,8 @@ impl Terminal {
         let mut cmd = CommandBuilder::new(program);
         cmd.args(args);
         cmd.env("TERM", "xterm-256color");
-        for (k, v) in crate::settings::env_pairs() {
+        let context = args.iter().position(|a| a == "--context").and_then(|i| args.get(i + 1)).map(|s| s.as_str());
+        for (k, v) in crate::settings::env_pairs_for(context) {
             cmd.env(k, v);
         }
         if let Ok(cwd) = std::env::current_dir() {

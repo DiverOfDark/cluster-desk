@@ -126,9 +126,18 @@ fn kubectl(args: &[String], stdin: Option<&str>) -> Result<String, String> {
     if let Err(why) = crate::settings::ensure_fallback_kubectl() {
         return Err(why);
     }
-    // The kubectl prepared for this context (Preferences), with PATH/KUBECONFIG/proxy applied.
     let context = args.iter().position(|a| a == "--context").and_then(|i| args.get(i + 1)).map(|s| s.as_str());
-    let mut cmd: Command = crate::settings::command(&crate::settings::kubectl_for(context));
+    match run_kubectl(context, args, stdin) {
+        // The sign-in plugin answered with another (supported) API version than the kubeconfig
+        // asks for: run again with a kubeconfig copy that asks for the plugin's version.
+        Err(e) if context.is_some_and(|c| crate::settings::adapt_exec_version(c, &e)) => run_kubectl(context, args, stdin),
+        r => r,
+    }
+}
+
+fn run_kubectl(context: Option<&str>, args: &[String], stdin: Option<&str>) -> Result<String, String> {
+    // The kubectl prepared for this context (Preferences), with PATH/KUBECONFIG/proxy applied.
+    let mut cmd: Command = crate::settings::command_for(&crate::settings::kubectl_for(context), context);
     cmd.args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

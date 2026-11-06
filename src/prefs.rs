@@ -348,6 +348,9 @@ impl App {
                 ui.add_space(6.0);
                 let st = settings::kubectl_status(&ctx).unwrap_or_else(|| "Checking the cluster version…".into());
                 ui.label(RichText::new(format!("{ctx}: {st}")).color(theme::TEXT_MID));
+                if let Some(note) = settings::exec_version_note(&ctx) {
+                    hint(ui, &note);
+                }
             }
             ui.horizontal(|ui| {
                 if ui.add_enabled(busy.as_deref().map(|b| !b.ends_with('…')).unwrap_or(true), egui::Button::new("Prepare kubectl for the open cluster")).clicked() {
@@ -482,10 +485,7 @@ impl App {
                                             let ctx = self.egui_ctx.clone();
                                             tests.lock().unwrap().insert(name.clone(), (true, "Testing…".into()));
                                             std::thread::spawn(move || {
-                                                let r = settings::command(&settings::kubectl_for(Some(&name)))
-                                                    .args(["--context", &name, "version", "-o", "json", "--request-timeout=20s"])
-                                                    .stdin(std::process::Stdio::null())
-                                                    .output();
+                                                let r = settings::kubectl_output(&name, &["version", "-o", "json", "--request-timeout=20s"]);
                                                 let res = match r {
                                                     Ok(o) => {
                                                         let v: Option<Value> = serde_json::from_slice(&o.stdout).ok();
