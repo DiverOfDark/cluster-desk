@@ -680,7 +680,8 @@ impl App {
         }
         conditions_drawer(ui, v);
 
-        let pods = self.rows(Kind::Pod);
+        // Every pod on the node, not just those of the selected namespaces.
+        let pods = self.all_pods().unwrap_or_default();
         let mine: Vec<&Row> = pods.iter().filter(|p| s(&p.obj, "spec/nodeName") == name).collect();
         pod_list(ui, &mine, acts);
     }

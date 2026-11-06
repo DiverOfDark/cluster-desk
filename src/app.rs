@@ -26,6 +26,8 @@ pub struct KindData {
     pub loaded: Option<Instant>,
     pub loading: bool,
     pub error: Option<String>,
+    /// The namespaces `rows` were fetched for (empty = all).
+    pub scope: Vec<String>,
 }
 
 pub enum DockKind {
@@ -114,6 +116,8 @@ pub struct App {
     volume_loading: bool,
     volume_at: Option<Instant>,
     pub ns_filter: BTreeSet<String>,
+    /// Namespace typed into the namespace picker (for people who can't list namespaces).
+    pub ns_input: String,
     pub search: String,
     pub sort: HashMap<Kind, (usize, bool)>,
     pub selected: Option<(Kind, String)>,
@@ -180,6 +184,7 @@ impl App {
             volume_loading: false,
             volume_at: None,
             ns_filter: BTreeSet::new(),
+            ns_input: String::new(),
             search: String::new(),
             sort: HashMap::new(),
             selected: None,
@@ -208,6 +213,10 @@ impl App {
             app.contexts_loaded = true;
             app.clusters.insert(0, ClusterEntry { name: ctxname.clone(), source: Source::Context(ctxname.clone()) });
             app.connect(0);
+            // SHOT_NS=a,b: picture with those namespaces selected.
+            if let Ok(ns) = std::env::var("SHOT_NS") {
+                app.ns_filter = ns.split(',').map(|n| n.trim().to_string()).filter(|n| !n.is_empty()).collect();
+            }
             app.view = if std::env::var("SHOT_VIEW").as_deref() == Ok("kind:node") {
                 View::List(Kind::Node)
             } else {
@@ -234,7 +243,7 @@ impl App {
             app.contexts_loaded = true;
             app.connect(0);
             for k in crate::model::ALL_KINDS {
-                let reply = app.backend.run_sample_now(&Job::List(*k));
+                let reply = app.backend.run_sample_now(&Job::List { kind: *k, namespaces: vec![] });
                 app.handle(reply);
             }
             let reply = app.backend.run_sample_now(&Job::NodeMetrics);
@@ -266,7 +275,7 @@ impl App {
                     app.expanded.insert("cert-manager.io");
                     if let Some((i, _)) = crate::crd::all().into_iter().find(|c| c.1.plural == "certificates") {
                         app.view = View::List(Kind::Custom(i));
-                        app.handle(app.backend.run_sample_now(&Job::List(Kind::Custom(i))));
+                        app.handle(app.backend.run_sample_now(&Job::List { kind: Kind::Custom(i), namespaces: vec![] }));
                         if pick == "crddetail" {
                             if let Some(r) = app.rows(Kind::Custom(i)).iter().find(|r| r.name == "api-internal") {
                                 app.selected = Some((Kind::Custom(i), r.uid.clone()));
@@ -327,27 +336,46 @@ impl App {
         self.store.get(&kind).map(|d| d.rows.clone()).unwrap_or_default()
     }
 
+    /// Namespaces a list of `kind` is fetched for: the selected ones (empty = all). Pods are
+    /// fetched from every namespace while node or cluster figures are shown, since those add up
+    /// the requests of all pods.
+    fn list_scope(&self, kind: Kind) -> Vec<String> {
+        let all_pods = matches!(self.view, View::Overview | View::List(Kind::Node))
+            || self.selected.as_ref().is_some_and(|s| s.0 == Kind::Node);
+        if !kind.namespaced() || (kind == Kind::Pod && all_pods) { vec![] } else { self.ns_filter.iter().cloned().collect() }
+    }
+
+    /// Pods of every namespace, once loaded (None while only some namespaces are loaded).
+    pub fn all_pods(&self) -> Option<Arc<Vec<Row>>> {
+        let d = self.store.get(&Kind::Pod)?;
+        (d.loaded.is_some() && d.error.is_none() && d.scope.is_empty()).then(|| d.rows.clone())
+    }
+
     pub fn ensure(&mut self, kind: Kind) {
         if self.backend.source.is_none() {
             return;
         }
+        let scope = self.list_scope(kind);
         let d = self.store.entry(kind).or_default();
         // Definitions change rarely and can be huge, so they refresh every minute.
         let every = if kind == Kind::Crd { REFRESH * 6 } else { REFRESH };
         let stale = d.loaded.map(|t| t.elapsed() > every).unwrap_or(true);
-        if !d.loading && stale && (d.error.is_none() || d.loaded.map(|t| t.elapsed() > every * 3).unwrap_or(false)) {
+        // Another namespace selection is fetched right away, even after an error.
+        let rescoped = d.loaded.is_some() && d.scope != scope;
+        if !d.loading && (rescoped || stale && (d.error.is_none() || d.loaded.map(|t| t.elapsed() > every * 3).unwrap_or(false))) {
             d.loading = true;
-            self.backend.submit(Job::List(kind));
+            self.backend.submit(Job::List { kind, namespaces: scope });
         }
     }
 
     pub fn reload(&mut self, kind: Kind) {
+        let scope = self.list_scope(kind);
         let d = self.store.entry(kind).or_default();
         d.error = None;
         d.loaded = None;
         if !d.loading {
             d.loading = true;
-            self.backend.submit(Job::List(kind));
+            self.backend.submit(Job::List { kind, namespaces: scope });
         }
     }
 
@@ -410,14 +438,14 @@ impl App {
     /// Fill the CPU and Memory columns of the nodes table the way the original does:
     /// usage from the metrics server over requests of the node's running pods, against allocatable.
     fn apply_node_metrics(&mut self) {
-        let pods_loaded = self.store.get(&Kind::Pod).map(|d| d.loaded.is_some() && d.error.is_none()).unwrap_or(false);
-        let pods = self.rows(Kind::Pod);
+        // Requests are only shown when they count every namespace's pods.
+        let pods = self.all_pods();
         let usage = self.node_usage.clone().unwrap_or_default();
         let Some(d) = self.store.get_mut(&Kind::Node) else { return };
         let rows = Arc::make_mut(&mut d.rows);
         for r in rows.iter_mut() {
             let (cpu, mem) = usage.get(&r.name).copied().unwrap_or((f64::NAN, f64::NAN));
-            let req = if pods_loaded { Some(crate::model::node_requests(&r.name, &pods)) } else { None };
+            let req = pods.as_ref().map(|pods| crate::model::node_requests(&r.name, pods));
             if r.cells.len() > 2 {
                 r.cells[1] = crate::model::Cell::Meter(crate::model::node_cpu_meter(&r.obj, cpu, req.map(|x| x.0)));
                 r.cells[2] = crate::model::Cell::Meter(crate::model::node_memory_meter(&r.obj, mem, req.map(|x| x.1)));
@@ -488,13 +516,14 @@ impl App {
                     self.connect(target);
                 }
             }
-            Reply::List { generation, kind, result } => {
+            Reply::List { generation, kind, namespaces, result } => {
                 if generation != self.backend.generation {
                     return;
                 }
                 let d = self.store.entry(kind).or_default();
                 d.loading = false;
                 d.loaded = Some(Instant::now());
+                d.scope = namespaces;
                 match result {
                     Ok(rows) => {
                         d.rows = Arc::new(rows);

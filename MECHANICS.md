@@ -178,6 +178,14 @@ status bar background `--primary`, text white. → `theme.rs`
 - Per context: how it signs in, read from `kubectl config view -o json` (secrets are redacted by kubectl): exec plugins (OIDC via `kubectl oidc-login`, kubelogin, GKE, EKS, DigitalOcean, …), auth-provider (with a warning that the built-in `oidc` provider was removed in kubectl 1.26), token, client certificate, username/password; whether the plugin program can be found; a **Test** button (`kubectl version`) and **Sign in in a terminal** (runs `kubectl get namespaces` in a real terminal so prompts, device codes and MFA can be answered).
 - Settings are saved as JSON in `~/.config/cluster-desk/settings.json`.
 
+## Namespace selection and loading (issue #7)
+
+| | Behaviour |
+|---|---|
+| Loading | Namespaced lists use `kubectl get <kind> --all-namespaces` with "All namespaces", and one `kubectl get <kind> -n <ns>` per selected namespace (in parallel, merged) otherwise, so accounts without cluster-wide list rights can load their namespaces. Namespaces that refuse are skipped; all refusing shows the error. A changed selection reloads at once. Exception: pods are always loaded from every namespace while the cluster overview, the Nodes list or a node's details are shown, because node and cluster request figures add up all pods; those figures stay empty until such a full list has arrived, never showing a partial total. The sample cluster still answers with everything and the views filter. |
+| Picker | The Namespace menu has a text field (Enter adds the namespace) for clusters where namespaces can't be listed; typed namespaces stay in the list as ticked boxes. The menu stays open while ticking or typing (closes on a click outside). |
+| Hint | When a namespaced list fails "at the cluster scope" with "All namespaces" selected, the error box suggests picking or typing a namespace. |
+
 ## Values settled later (previously estimated)
 
 | What | Original | Where | In this app |
