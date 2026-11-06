@@ -23,7 +23,9 @@ pub struct ClusterEntry {
 
 #[derive(Clone, Debug)]
 pub enum Job {
-    List(Kind),
+    /// Every object of a kind; for namespaced kinds only those in `namespaces` when it isn't
+    /// empty (one request per namespace, which also works without cluster-wide list rights).
+    List { kind: Kind, namespaces: Vec<String> },
     Logs { tab: u64, ns: String, pod: String, container: String, previous: bool },
     Yaml { tab: u64, kind: Kind, ns: String, name: String },
     Replace { tab: u64, kind: Kind, ns: String, name: String, text: String },
@@ -42,7 +44,7 @@ pub type VolumeUsage = std::collections::HashMap<(String, String), (f64, f64)>;
 pub type NodeUsage = std::collections::HashMap<String, (f64, f64)>;
 
 pub enum Reply {
-    List { generation: u64, kind: Kind, result: Result<Vec<Row>, String> },
+    List { generation: u64, kind: Kind, namespaces: Vec<String>, result: Result<Vec<Row>, String> },
     Text { generation: u64, tab: u64, result: Result<String, String> },
     Action { generation: u64, result: Result<String, String>, refresh: Kind, tab: Option<u64> },
     Contexts { names: Vec<String>, current: Option<String>, error: Option<String> },
@@ -170,12 +172,7 @@ fn ns_args(kind: Kind, ns: &str) -> Vec<String> {
 fn run_kube(ctx: &str, job: &Job) -> Result<String, String> {
     let mut a = base(ctx);
     match job {
-        Job::List(kind) => {
-            a.extend(["get".into(), kind.resource().into(), "-o".into(), "json".into()]);
-            if kind.namespaced() {
-                a.push("--all-namespaces".into());
-            }
-        }
+        Job::List { .. } => unreachable!("lists are fetched by fetch_list"),
         Job::Logs { ns, pod, container, previous, .. } => {
             a.extend(["logs".into(), pod.clone(), "-n".into(), ns.clone(), "-c".into(), container.clone()]);
             a.extend(["--tail=500".into() /* logLinesToLoad = 500 */, "--timestamps".into()]);
@@ -209,6 +206,47 @@ fn run_kube(ctx: &str, job: &Job) -> Result<String, String> {
         Job::VolumeStats { .. } => unreachable!("volume stats are fetched per node"),
     }
     kubectl(&a, None)
+}
+
+/// `kubectl get <kind>` across the cluster, or for namespaced kinds with `namespaces` given,
+/// in each of those namespaces in parallel, which works for accounts limited to some namespaces
+/// (issue #7). Namespaces that refuse are skipped; all refusing is an error.
+fn fetch_list(ctx: &str, kind: Kind, namespaces: &[String]) -> Result<Vec<Row>, String> {
+    let get = |ns: Option<&str>| {
+        let mut a = base(ctx);
+        a.extend(["get".into(), kind.resource().into(), "-o".into(), "json".into()]);
+        match ns {
+            Some(ns) => a.extend(["-n".into(), ns.into()]),
+            None if kind.namespaced() => a.push("--all-namespaces".into()),
+            None => {}
+        }
+        kubectl(&a, None).and_then(|t| parse_list(kind, &t))
+    };
+    if !kind.namespaced() || namespaces.is_empty() {
+        return get(None);
+    }
+    let results: Vec<Result<Vec<Row>, String>> = std::thread::scope(|sc| {
+        let handles: Vec<_> = namespaces.iter().map(|ns| sc.spawn(move || get(Some(ns)))).collect();
+        handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err("list thread failed".into()))).collect()
+    });
+    merge_lists(results)
+}
+
+fn merge_lists(results: Vec<Result<Vec<Row>, String>>) -> Result<Vec<Row>, String> {
+    let mut rows = vec![];
+    let mut errors: Vec<String> = vec![];
+    let mut ok = false;
+    for r in results {
+        match r {
+            Ok(mut part) => {
+                ok = true;
+                rows.append(&mut part);
+            }
+            Err(e) if !errors.contains(&e) => errors.push(e),
+            Err(_) => {}
+        }
+    }
+    if ok || errors.is_empty() { Ok(rows) } else { Err(errors.join("\n")) }
 }
 
 fn parse_list(kind: Kind, text: &str) -> Result<Vec<Row>, String> {
@@ -316,14 +354,15 @@ impl Backend {
                     let Job::VolumeStats { nodes } = &job else { unreachable!() };
                     Reply::VolumeStats { generation, result: fetch_volume_stats(&c, nodes) }
                 }
+                Source::Context(c) if matches!(job, Job::List { .. }) => {
+                    let Job::List { kind, namespaces } = job else { unreachable!() };
+                    let result = fetch_list(&c, kind, &namespaces);
+                    Reply::List { generation, kind, namespaces, result }
+                }
                 Source::Context(c) => {
                     let res = run_kube(&c, &job);
                     match &job {
-                        Job::List(kind) => Reply::List {
-                            generation,
-                            kind: *kind,
-                            result: res.and_then(|t| parse_list(*kind, &t)),
-                        },
+                        Job::List { .. } => unreachable!(),
                         Job::Yaml { tab, .. } => Reply::Text {
                             generation,
                             tab: *tab,
@@ -361,9 +400,11 @@ impl Backend {
 fn run_sample(demo: &Arc<Mutex<DemoCluster>>, generation: u64, job: &Job) -> Reply {
     let mut d = demo.lock().unwrap();
     match job {
-        Job::List(kind) => Reply::List {
+        // The sample cluster always answers with everything; the views filter by namespace.
+        Job::List { kind, namespaces } => Reply::List {
             generation,
             kind: *kind,
+            namespaces: namespaces.clone(),
             result: Ok(d.list(*kind).into_iter().map(|v| build_row(*kind, v)).collect()),
         },
         Job::Logs { tab, ns, pod, container, .. } => {
@@ -400,5 +441,20 @@ fn run_sample(demo: &Arc<Mutex<DemoCluster>>, generation: u64, job: &Job) -> Rep
         }
         Job::NodeMetrics => Reply::NodeMetrics { generation, result: Ok(d.node_metrics()) },
         Job::VolumeStats { .. } => Reply::VolumeStats { generation, result: Ok(d.volume_stats()) },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_lists;
+
+    #[test]
+    fn namespace_lists_skip_refusals_unless_all_refuse() {
+        assert_eq!(merge_lists(vec![Ok(vec![]), Err("forbidden in b".into())]).map(|r| r.len()), Ok(0));
+        assert_eq!(
+            merge_lists(vec![Err("forbidden".into()), Err("forbidden".into()), Err("not found".into())]).err().as_deref(),
+            Some("forbidden\nnot found")
+        );
+        assert!(merge_lists(vec![]).is_ok());
     }
 }

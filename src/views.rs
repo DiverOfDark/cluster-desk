@@ -355,15 +355,35 @@ impl App {
         } else {
             self.ns_filter.iter().cloned().collect::<Vec<_>>().join(", ")
         };
-        let names: Vec<String> = self.rows(Kind::Namespace).iter().map(|r| r.name.clone()).collect();
+        // Listed namespaces plus any typed in, so typed ones can be unticked again.
+        let mut names: std::collections::BTreeSet<String> = self.rows(Kind::Namespace).iter().map(|r| r.name.clone()).collect();
+        let cant_list = names.is_empty() && self.store.get(&Kind::Namespace).is_some_and(|d| d.error.is_some());
+        names.extend(self.ns_filter.iter().cloned());
         egui::ComboBox::from_id_salt("nsfilter")
             .width(190.0)
             .selected_text(RichText::new(format!("Namespace: {label}")).color(theme::TEXT_MID))
+            // Stays open while namespaces are ticked or typed.
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .show_ui(ui, |ui| {
+                // A namespace can be typed in when the cluster doesn't allow listing them.
+                let edit = ui.add(
+                    egui::TextEdit::singleline(&mut self.ns_input).hint_text("Type a namespace, press Enter").desired_width(f32::INFINITY),
+                );
+                if edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    let typed = self.ns_input.trim().to_string();
+                    if !typed.is_empty() {
+                        self.ns_filter.insert(typed);
+                    }
+                    self.ns_input.clear();
+                    edit.request_focus();
+                }
+                if cant_list {
+                    ui.label(RichText::new("Namespaces can't be listed with your access; type the ones you can use.").color(theme::TEXT_MID).small());
+                }
+                ui.separator();
                 if ui.selectable_label(self.ns_filter.is_empty(), "All namespaces").clicked() {
                     self.ns_filter.clear();
                 }
-                ui.separator();
                 for n in names {
                     let mut on = self.ns_filter.contains(&n);
                     if ui.checkbox(&mut on, &n).changed() {
@@ -465,6 +485,12 @@ impl App {
                 _ => format!("Could not load {}", kind.title()),
             };
             notice(ui, &format!("{what}:\n{e}"), true);
+            if kind.namespaced() && self.ns_filter.is_empty() && e.contains("at the cluster scope") {
+                ui.label(
+                    RichText::new("Your access may be limited to some namespaces: pick or type one in the Namespace menu above to load just those.")
+                        .color(theme::TEXT_MID),
+                );
+            }
             if ui.button("Retry").clicked() {
                 self.reload(kind);
             }
