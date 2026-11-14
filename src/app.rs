@@ -119,6 +119,8 @@ pub struct App {
     /// Namespace typed into the namespace picker (for people who can't list namespaces).
     pub ns_input: String,
     pub search: String,
+    /// Field filter of the table header's column menu.
+    pub column_search: String,
     pub sort: HashMap<Kind, (usize, bool)>,
     pub selected: Option<(Kind, String)>,
     pub expanded: HashSet<&'static str>,
@@ -150,6 +152,7 @@ pub struct FilterKey {
     pub search: String,
     pub ns: BTreeSet<String>,
     pub sort: Option<(usize, bool)>,
+    pub extra: Vec<String>,
 }
 
 const REFRESH: Duration = Duration::from_secs(10);
@@ -186,6 +189,7 @@ impl App {
             ns_filter: BTreeSet::new(),
             ns_input: String::new(),
             search: String::new(),
+            column_search: String::new(),
             sort: HashMap::new(),
             selected: None,
             expanded: ["Workloads"].into_iter().collect(),

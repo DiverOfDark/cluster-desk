@@ -7,6 +7,7 @@ use crate::model::{Cell, GROUPS, Kind, Row, Tone, pod_status};
 use crate::theme;
 use crate::util::{self, arr, s};
 use egui::{Align2, Color32, CornerRadius, FontId, Pos2, Rect, RichText, Sense, Stroke, pos2, vec2};
+use crate::columns::ExtraColumn;
 use std::sync::Arc;
 
 /// Table rows: rowLineHeight 17 + 2 × rowPadding 8 (table.tsx defaultProps).
@@ -336,7 +337,9 @@ impl App {
         ui.label(RichText::new("Events").size(16.0).color(theme::TEXT_HI));
         ui.add_space(6.0);
         let rows = self.rows(Kind::Event);
-        let idx: Vec<usize> = (0..rows.len()).filter(|i| self.ns_ok(&rows[*i].ns)).collect();
+        let mut idx: Vec<usize> = (0..rows.len()).filter(|i| self.ns_ok(&rows[*i].ns)).collect();
+        let extra = crate::columns::get(Kind::Event.resource());
+        sort_idx(Kind::Event, &rows, &mut idx, self.sort.get(&Kind::Event).copied(), &extra);
         if let Some(i) = self.resource_table(ui, Kind::Event, &rows, &idx, Some(ROW_H * 12.0)) {
             if let RowAction::Open(i) = i {
                 self.selected = Some((Kind::Event, rows[i].uid.clone()));
@@ -407,6 +410,7 @@ impl App {
             search: self.search.to_lowercase(),
             ns: if kind.namespaced() { self.ns_filter.clone() } else { Default::default() },
             sort: self.sort.get(&kind).copied(),
+            extra: crate::columns::get(kind.resource()).into_iter().map(|c| c.path).collect(),
         };
         if let Some((k, v)) = &self.filter_cache {
             if *k == key {
@@ -420,18 +424,8 @@ impl App {
                 (key.ns.is_empty() || key.ns.contains(&r.ns)) && terms.iter().all(|t| r.search.contains(t))
             })
             .collect();
-        if let Some((col, asc)) = key.sort {
-            let keys: Vec<String> = rows.iter().map(|r| r.cells.get(col).map(|c| c.sort_text()).unwrap_or_default()).collect();
-            idx.sort_by(|a, b| {
-                let o = natural_cmp(&keys[*a], &keys[*b]);
-                if asc { o } else { o.reverse() }
-            });
-        } else if kind == Kind::Event {
-            idx.sort_by_key(|i| match rows[*i].cells.last() {
-                Some(Cell::Age(t)) => -*t,
-                _ => 0,
-            });
-        }
+        let extra = crate::columns::get(kind.resource());
+        sort_idx(kind, &rows, &mut idx, key.sort, &extra);
         let v = Arc::new(idx);
         self.filter_cache = Some((key, v.clone()));
         (rows, v)
@@ -549,12 +543,27 @@ impl App {
         idx: &[usize],
         max_h: Option<f32>,
     ) -> Option<RowAction> {
-        let cols = kind.columns();
+        let base = kind.columns();
+        let extra = crate::columns::get(kind.resource());
+        let mut cols: Vec<(&str, f32)> = base.to_vec();
+        cols.extend(extra.iter().map(|c| (c.title.as_str(), 1.2)));
         let menu_w = 36.0;
         let width = ui.available_width();
-        let widths = col_widths(cols, width - menu_w);
+        let widths = col_widths_ext(&cols, width - menu_w, base.len());
         let sort = self.sort.get(&kind).copied();
-        if let Some(c) = table_header(ui, &cols.iter().map(|c| c.0).collect::<Vec<_>>(), &widths, Some(sort)) {
+        let head_top = ui.cursor().min;
+        let clicked = table_header(ui, &cols.iter().map(|c| c.0).collect::<Vec<_>>(), &widths, Some(sort));
+        // Header ⋮: add or remove extra columns.
+        let mr = Rect::from_center_size(pos2(head_top.x + width - menu_w / 2.0, head_top.y + HEAD_H / 2.0), vec2(24.0, 24.0));
+        let mresp = ui.interact(mr, ui.scope_id().with(("colmenu", kind.resource())), Sense::click()).on_hover_text("Columns");
+        if mresp.hovered() {
+            ui.painter().rect_filled(mr, CornerRadius::same(12), theme::HOVER);
+        }
+        ui.painter().text(mr.center(), Align2::CENTER_CENTER, "⋮", FontId::proportional(16.0), theme::TEXT_MID);
+        egui::Popup::menu(&mresp)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+            .show(|ui| self.columns_menu(ui, kind, rows, idx, extra.clone()));
+        if let Some(c) = clicked {
             let next = match sort {
                 Some((sc, true)) if sc == c => Some((c, false)),
                 Some((sc, false)) if sc == c => None,
@@ -591,11 +600,19 @@ impl App {
                     let selected = sel_uid.as_deref() == Some(row.uid.as_str());
                     row_bg(ui.painter(), rect, vis, resp.hovered(), selected);
                     let cells_rect = Rect::from_min_max(rect.min, pos2(rect.right() - menu_w, rect.bottom()));
-                    paint_cells(ui, cells_rect, &widths, &row.cells, now);
+                    let cells: std::borrow::Cow<[Cell]> = if extra.is_empty() {
+                        std::borrow::Cow::Borrowed(&row.cells)
+                    } else {
+                        let mut c = row.cells.clone();
+                        c.resize(base.len(), Cell::Text(String::new()));
+                        c.extend(extra.iter().map(|e| Cell::Text(crate::columns::value(&row.obj, &e.path))));
+                        std::borrow::Cow::Owned(c)
+                    };
+                    paint_cells(ui, cells_rect, &widths, &cells, now);
                     // Hover tooltips of the usage bars (the original shows them under the cell).
                     if let Some(pos) = resp.hover_pos() {
                         let mut x = cells_rect.left();
-                        for (cell, w) in row.cells.iter().zip(&widths) {
+                        for (cell, w) in cells.iter().zip(&widths) {
                             if pos.x >= x && pos.x < x + w {
                                 if let Cell::Meter(m) = cell {
                                     if !m.tooltip.is_empty() {
@@ -651,6 +668,88 @@ impl App {
             });
         action
     }
+
+    /// The header ⋮ menu: the extra columns shown, and every field of the listed objects to add.
+    fn columns_menu(&mut self, ui: &mut egui::Ui, kind: Kind, rows: &[Row], idx: &[usize], mut extra: Vec<ExtraColumn>) {
+        ui.set_width(420.0);
+        let base = kind.columns().len();
+        let mut changed = false;
+        if !extra.is_empty() {
+            ui.label(RichText::new("Extra columns").color(theme::TEXT_HI));
+            let mut remove = None;
+            for (i, c) in extra.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.small_button("✕").on_hover_text("Remove column").clicked() {
+                        remove = Some(i);
+                    }
+                    changed |= ui.add(egui::TextEdit::singleline(&mut c.title).desired_width(140.0)).changed();
+                    ui.label(RichText::new(c.path.replace("~1", "/").replace("~0", "~")).small().color(theme::TEXT_MID));
+                });
+            }
+            if let Some(i) = remove {
+                extra.remove(i);
+                changed = true;
+                // Column indexes after the removed one shift; drop a sort on any extra column.
+                if self.sort.get(&kind).is_some_and(|s| s.0 >= base) {
+                    self.sort.remove(&kind);
+                }
+            }
+            ui.separator();
+        }
+        ui.label(RichText::new("Add a column").color(theme::TEXT_HI));
+        let search = ui.add(
+            egui::TextEdit::singleline(&mut self.column_search)
+                .hint_text("Filter fields, or type a path like status/nodeInfo/osImage")
+                .desired_width(f32::INFINITY),
+        );
+        let q = self.column_search.trim().to_lowercase();
+        let mut add = None;
+        if search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && !q.is_empty() {
+            add = Some(self.column_search.trim().trim_matches('/').to_string());
+        }
+        let paths = crate::columns::field_paths(idx.iter().take(30).map(|&i| &rows[i].obj));
+        egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
+            let mut shown = 0;
+            for (path, example) in &paths {
+                if extra.iter().any(|c| &c.path == path) {
+                    continue;
+                }
+                let readable = path.replace("~1", "/").replace("~0", "~");
+                if !q.is_empty() && !readable.to_lowercase().contains(&q) && !example.to_lowercase().contains(&q) {
+                    continue;
+                }
+                shown += 1;
+                if shown > 300 {
+                    ui.label(RichText::new("More fields: type to narrow the list.").small().color(theme::TEXT_MID));
+                    break;
+                }
+                let r = ui
+                    .horizontal(|ui| {
+                        let r = ui.selectable_label(false, &readable);
+                        let rest = ui.available_width();
+                        let g = ellipsize(ui, example, FontId::proportional(12.0), theme::TEXT_MID, rest);
+                        ui.label(g);
+                        r
+                    })
+                    .inner;
+                if r.on_hover_text(example).clicked() {
+                    add = Some(path.clone());
+                }
+            }
+            if shown == 0 {
+                ui.label(RichText::new("No matching fields. Press Enter to add the typed path.").small().color(theme::TEXT_MID));
+            }
+        });
+        if let Some(path) = add {
+            extra.push(ExtraColumn { title: crate::columns::default_title(&path), path });
+            self.column_search.clear();
+            changed = true;
+        }
+        if changed {
+            crate::columns::set(kind.resource(), extra);
+            self.filter_cache = None;
+        }
+    }
 }
 
 // ------------------------------------------------------------ painting helpers
@@ -659,10 +758,19 @@ impl App {
 /// narrower than the header title, and usage bars never narrower than 120 px so "usage / requests"
 /// stays readable in a small window (the original lets such cells clip instead).
 pub fn col_widths(cols: &[(&str, f32)], width: f32) -> Vec<f32> {
+    col_widths_ext(cols, width, cols.len())
+}
+
+/// `col_widths`, with columns from `extra_from` on (added from the header ⋮) at least 110 px.
+pub fn col_widths_ext(cols: &[(&str, f32)], width: f32, extra_from: usize) -> Vec<f32> {
     let mins: Vec<f32> = cols
         .iter()
-        .map(|(t, _)| {
+        .enumerate()
+        .map(|(ci, (t, _))| {
             let header = t.chars().count() as f32 * 7.5 + 30.0;
+            if ci >= extra_from {
+                return header.max(110.0);
+            }
             match *t {
                 "CPU" | "Memory" | "Disk" => header.max(120.0),
                 "Usage" => header.max(150.0),
@@ -690,6 +798,13 @@ pub fn col_widths(cols: &[(&str, f32)], width: f32) -> Vec<f32> {
         if !changed {
             break;
         }
+    }
+    // Too many columns for the window (extra columns added): shrink them all to fit, the
+    // cells clip their text, rather than painting past the right edge.
+    let total: f32 = out.iter().sum();
+    if total > width && total > 0.0 {
+        let k = width.max(0.0) / total;
+        out.iter_mut().for_each(|w| *w *= k);
     }
     out
 }
@@ -965,5 +1080,28 @@ pub fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
                 bi.next();
             }
         }
+    }
+}
+
+/// Orders `idx` by the clicked column, or newest first for events when no column is picked.
+fn sort_idx(kind: Kind, rows: &[Row], idx: &mut [usize], sort: Option<(usize, bool)>, extra: &[ExtraColumn]) {
+    if let Some((col, asc)) = sort {
+        let base = kind.columns().len();
+        let keys: Vec<String> = rows
+            .iter()
+            .map(|r| match col.checked_sub(base) {
+                Some(e) => extra.get(e).map(|c| crate::columns::value(&r.obj, &c.path)).unwrap_or_default(),
+                None => r.cells.get(col).map(|c| c.sort_text()).unwrap_or_default(),
+            })
+            .collect();
+        idx.sort_by(|a, b| {
+            let o = natural_cmp(&keys[*a], &keys[*b]);
+            if asc { o } else { o.reverse() }
+        });
+    } else if kind == Kind::Event {
+        idx.sort_by_key(|i| match rows[*i].cells.last() {
+            Some(Cell::Age(t)) => -*t,
+            _ => 0,
+        });
     }
 }

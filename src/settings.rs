@@ -127,9 +127,13 @@ pub fn expand(p: &str) -> PathBuf {
     }
 }
 
-fn config_file() -> PathBuf {
+pub fn config_dir() -> PathBuf {
     let base = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config"));
-    base.join("cluster-desk").join("settings.json")
+    base.join("cluster-desk")
+}
+
+fn config_file() -> PathBuf {
+    config_dir().join("settings.json")
 }
 
 pub fn default_binaries_dir() -> PathBuf {

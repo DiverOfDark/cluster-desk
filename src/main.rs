@@ -4,6 +4,7 @@ use eframe::egui;
 
 mod ansi;
 mod app;
+mod columns;
 mod backend;
 mod crd;
 mod demo;
