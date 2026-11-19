@@ -29,7 +29,7 @@ impl App {
         let name = s(pod, "metadata/name");
         let containers = Self::containers_of(pod);
         let container = container.or_else(|| containers.first().cloned()).unwrap_or_default();
-        if let Some(t) = self.dock_tabs.iter().find(|t| matches!(&t.kind, DockKind::Logs { pod, container: c, .. } if *pod == name && *c == container)) {
+        if let Some(t) = self.dock_tabs.iter().find(|t| matches!(&t.kind, DockKind::Logs { ns: n, pod, container: c, .. } if *n == ns && *pod == name && *c == container)) {
             self.dock_active = t.id;
             self.dock_open = true;
             return;

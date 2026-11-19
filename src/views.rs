@@ -593,10 +593,14 @@ impl App {
                 for vis in range {
                     let i = idx[vis];
                     let row = &rows[i];
-                    let (rect, resp) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::click());
+                    let (rect, _) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::hover());
                     if !ui.is_rect_visible(rect) {
                         continue;
                     }
+                    // Key the row (and so its context menu) and its ⋮ menu by the object's uid, not by
+                    // screen slot or list index: the list reloads while a menu is open, and a slot-keyed
+                    // menu would then act on whichever object moved into that slot.
+                    let resp = ui.interact(rect, ui.scope_id().with(("row", &row.uid)), Sense::click());
                     let selected = sel_uid.as_deref() == Some(row.uid.as_str());
                     row_bg(ui.painter(), rect, vis, resp.hovered(), selected);
                     let cells_rect = Rect::from_min_max(rect.min, pos2(rect.right() - menu_w, rect.bottom()));
@@ -625,7 +629,7 @@ impl App {
                     }
                     // Row menu (⋮)
                     let mr = Rect::from_center_size(pos2(rect.right() - menu_w / 2.0, rect.center().y), vec2(24.0, 24.0));
-                    let mresp = ui.interact(mr, ui.scope_id().with(("menu", i)), Sense::click());
+                    let mresp = ui.interact(mr, ui.scope_id().with(("menu", &row.uid)), Sense::click());
                     if mresp.hovered() {
                         ui.painter().rect_filled(mr, CornerRadius::same(12), theme::HOVER);
                     }
